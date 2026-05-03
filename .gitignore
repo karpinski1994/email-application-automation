@@ -1,14 +1,28 @@
-# ==========================================
-# Node.js / Tooling
-# ==========================================
-node_modules/
-.opencode/node_modules/
-.opencode/package*.json
-# NOTE: Do NOT ignore package.json / package-lock.json in the root
+# =========================
+# Sensitive Data & Secrets
+# =========================
+.env
+*.env
+.env.*
+credentials.json
+*token.json        # Catches gmail_token.json wherever it is
 
-# ==========================================
-# Python
-# ==========================================
+# =========================
+# Generated Data & PII
+# =========================
+data/
+# Prevent accidental commit of base CV files (High PII risk)
+*.pdf
+*.docx
+*.doc
+example-apify-response.json  # Fixed typo: respons -> response
+
+# =========================
+# Python Environment
+# =========================
+venv/
+.venv/
+env/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -17,44 +31,25 @@ __pycache__/
 dist/
 build/
 
-# Virtual Environments (CRITICAL)
-venv/
-.venv/
-env/
-
-# Python Tooling Caches
+# =========================
+# Testing & Type Checking
+# =========================
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
 
-# ==========================================
-# Environment & Secrets (CRITICAL)
-# ==========================================
-.env
-*.env
-.env.*
-*.tmp
-*.temp
+# =========================
+# Dependencies (Node/Bun)
+# =========================
+node_modules/
+# DO NOT ignore package.json or package-lock.json!
+# If they exist, they MUST be committed so others can install dependencies.
 
-# ==========================================
-# Generated Data & PII (CRITICAL)
-# ==========================================
-# All scraped jobs, parsed CVs, generated PDFs, and logs
-data/
-
-# Google OAuth Secrets & Tokens
-credentials.json
-*token.json
-
-# Base CV Files (High PII risk - prevent accidental commit)
-*.pdf
-*.docx
-
-# ==========================================
+# =========================
 # OS & IDE
-# ==========================================
+# =========================
 .DS_Store
 Thumbs.db
 .vscode/
@@ -62,8 +57,9 @@ Thumbs.db
 *.swp
 *.swo
 
-# ==========================================
-# Misc / Examples
-# ==========================================
-example-apify-response.json
-example-apify-respons.json
+# =========================
+# OpenSpec & Temporary
+# =========================
+.opencode/
+*.tmp
+*.temp
