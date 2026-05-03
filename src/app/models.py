@@ -8,7 +8,7 @@ from pathlib import Path
 class SearchConfig(BaseModel):
     """Job search configuration."""
     urls: list[str] = Field(min_length=1, description="List of job search URLs")
-    count: int = Field(default=50, ge=1, le=50, description="Max jobs to process")
+    count: int = Field(default=100, ge=1, le=200, description="Max jobs to process")
 
 
 class CVConfig(BaseModel):

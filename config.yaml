@@ -3,10 +3,12 @@
 # Job search configuration
 search:
   urls:
-    - "https://www.linkedin.com/jobs/search/?keywords=frontend%20developer%20latam"
-    - "https://www.linkedin.com/jobs/search/?keywords=front-end%20developer"
-    - "https://www.linkedin.com/jobs/search/?keywords=react%20developer"
-  count: 10
+    # Public LinkedIn job search URLs (must be from incognito/logged-out browser)
+    # Format: /jobs/search/?keywords=...&location=...
+    - "https://www.linkedin.com/jobs/search/?keywords=front-end%20developer&location=Latin%20America"
+    - "https://www.linkedin.com/jobs/search/?keywords=frontend%20developer%20remote&location=Latin%20America"
+    - "https://www.linkedin.com/jobs/search/?keywords=frontend%20developer&f_WT=2"
+  count: 100
 
 # CV file path (relative to project root)
 cv:
