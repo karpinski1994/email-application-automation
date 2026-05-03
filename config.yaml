@@ -1,0 +1,33 @@
+# Configuration for Email Application Automation
+# Copy this to config.yaml and fill in your actual values
+
+# Job search configuration
+search:
+  urls:
+    - "https://www.linkedin.com/jobs/search-results/?keywords=python%20developer"
+    - "https://www.linkedin.com/jobs/search-results/?keywords=software%20engineer"
+  count: 50
+
+# CV file path (relative to project root)
+cv:
+  path: "./my_cv.pdf"
+
+# Gmail settings
+gmail:
+  draft_only: true  # Set to false to actually send emails (NOT RECOMMENDED)
+  token_path: "data/gmail_token.json"
+  credentials_path: "credentials.json"
+
+# LLM Configuration
+llm:
+  provider: "local"  # Options: "local" (Ollama) or "openai"
+  model: "qwen2.5:7b"  # For local: qwen2.5:7b, llama3.2:3b, gemma2:9b
+  base_url: "http://localhost:11434/v1"  # For local Ollama
+  api_key: "ollama"  # Dummy for local; use OPENAI_API_KEY for openai
+
+# Privacy settings
+privacy:
+  redact_pii: true  # Redact personal info before sending to LLM
+
+# Dry run mode (for testing without API calls)
+dry_run: false
