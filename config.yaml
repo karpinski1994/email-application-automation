@@ -22,10 +22,10 @@ gmail:
 
 # LLM Configuration
 llm:
-  provider: "local"
-  model: "qwen2.5:7b"
-  base_url: "http://localhost:11434/v1"
-  api_key: "ollama"
+  provider: "local"  # "local" (Ollama) or "openai"
+  model: "qwen2.5:7b"  # Local: qwen2.5:7b | OpenAI: gpt-4o-mini
+  base_url: "http://localhost:11434/v1"  # Local: http://localhost:11434/v1 | OpenAI: https://api.openai.com/v1
+  api_key: "ollama"  # Local: ollama | OpenAI: ${OPENAI_API_KEY}
 
 # Apify Configuration (for LinkedIn job scraping)
 # Set APIFY_API_KEY in .env file (see .env.example)

@@ -126,11 +126,20 @@ async def run(config: Config, force: bool = False, step: int = 1, dry_run: bool 
     if step <= 3:
         filtered_path = DATA_DIR / "filtered_jobs.json"
         if force or not is_cached(filtered_path):
+            # Determine LLM config based on provider
+            if config.llm.provider == "openai":
+                llm_base_url = "https://api.openai.com/v1"
+                llm_api_key = config.llm.api_key or os.getenv("OPENAI_API_KEY", "")
+            else:
+                llm_base_url = config.llm.base_url
+                llm_api_key = config.llm.api_key
+            
             qualifying, rejected = await filter_jobs(
                 jobs, cv_text,
-                llm_base_url=config.llm.base_url,
+                llm_base_url=llm_base_url,
                 llm_model=config.llm.model,
-                llm_api_key=config.llm.api_key,
+                llm_api_key=llm_api_key,
+                llm_provider=config.llm.provider,  # For concurrency selection
                 min_score=5,  # Lowered from 6 to allow "decent fit"
             )
             save_json(filtered_path, [j.model_dump() for j in qualifying])

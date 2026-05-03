@@ -15,6 +15,7 @@ def main():
     parser.add_argument("--step", "-s", type=int, default=1, help="Start from step N (1-7)")
     parser.add_argument("--dry-run", action="store_true", help="Dry run, don't call external APIs")
     parser.add_argument("--count", "-c", type=int, default=50, help="Max jobs to process")
+    parser.add_argument("--limit", "-l", type=int, default=None, help="Limit jobs for testing (overrides count)")
     parser.add_argument("--config", default="config.yaml", help="Config file path")
     
     args = parser.parse_args()
