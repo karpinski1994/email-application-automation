@@ -34,14 +34,15 @@ async def run(config: Config, force: bool = False, step: int = 1, dry_run: bool 
     started_at = datetime.now().isoformat()
     errors = []
     
-    # Step 1: Parse CV
+    # Step 1: Parse CV (always use real CV, mocks are for other steps)
     if step <= 1:
         cv_path = DATA_DIR / "cv_parsed.json"
         if force or not is_cached(cv_path):
-            if dry_run:
-                cv_text = parse_cv_mock()
-            else:
+            try:
                 cv_text = parse_cv(config.cv.path)
+            except FileNotFoundError:
+                print(f"CV not found: {config.cv.path}, using mock")
+                cv_text = parse_cv_mock()
             save_json(cv_path, {"text": cv_text})
         else:
             cv_text = load_json(cv_path).get("text", "")
