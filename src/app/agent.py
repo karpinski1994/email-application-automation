@@ -52,10 +52,7 @@ async def run(config: Config, force: bool = False, step: int = 1, dry_run: bool 
     if step <= 2:
         jobs_path = DATA_DIR / "apify_results.json"
         if force or not is_cached(jobs_path):
-            if dry_run:
-                jobs = await scrape_jobs(config.search.urls, config.search.count)
-            else:
-                jobs = await scrape_jobs(config.search.urls, config.search.count)
+            jobs = await scrape_jobs(config.search.urls, config.apify, config.search.count)
             save_json(jobs_path, [j.model_dump() for j in jobs])
         else:
             jobs_data = load_json(jobs_path)

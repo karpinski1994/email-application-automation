@@ -9,16 +9,17 @@ from .models import Config
 
 def load_config(config_path: str = "config.yaml") -> Config:
     """Load configuration from YAML file and .env."""
-    # Load .env variables
     load_dotenv()
     
-    # Load config.yaml
     config_file = Path(config_path)
     if not config_file.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
     
     with open(config_file) as f:
         raw = yaml.safe_load(f)
+    
+    if "apify" in raw and "api_token" in raw["apify"]:
+        raw["apify"]["api_token"] = os.getenv("APIFY_API_KEY", raw["apify"].get("api_token", ""))
     
     return Config(**raw)
 

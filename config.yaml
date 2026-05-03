@@ -3,9 +3,9 @@
 # Job search configuration
 search:
   urls:
-    - "https://www.linkedin.com/jobs/search-results/?currentJobId=4403140099&keywords=front-end%20developer%20latam&origin=JOB_SEARCH_PAGE_JOB_FILTER&referralSearchId=sLKUvYeHVLxSIY9rgIazeg%3D%3D&f_SAL=f_SA_id_225001%3A272001"
-    - "https://www.linkedin.com/jobs/search-results/?currentJobId=4403140099&keywords=frontend%20developer%20latam%20remote&origin=SEMANTIC_SEARCH_LANDING_PAGE"
-    - "https://www.linkedin.com/jobs/search-results/?currentJobId=4318646564&keywords=frontend&origin=JOB_SEARCH_PAGE_JOB_FILTER&referralSearchId=BssqueHvnnZUQGv9nW3%2BbA%3D%3D&f_SAL=f_SA_id_225001%3A272001"
+    - "https://www.linkedin.com/jobs/search/?keywords=frontend%20developer%20latam"
+    - "https://www.linkedin.com/jobs/search/?keywords=front-end%20developer"
+    - "https://www.linkedin.com/jobs/search/?keywords=react%20developer"
   count: 10
 
 # CV file path (relative to project root)
@@ -24,6 +24,12 @@ llm:
   model: "qwen2.5:7b"
   base_url: "http://localhost:11434/v1"
   api_key: "ollama"
+
+# Apify Configuration (for LinkedIn job scraping)
+# Set APIFY_API_KEY in .env file (see .env.example)
+apify:
+  api_token: "${APIFY_API_KEY}"
+  actor_id: "hKByXkMQaC5Qt9UMN"
 
 # Privacy settings
 privacy:

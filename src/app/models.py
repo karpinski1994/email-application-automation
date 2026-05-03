@@ -31,6 +31,12 @@ class LLMConfig(BaseModel):
     api_key: str = "ollama"
 
 
+class ApifyConfig(BaseModel):
+    """Apify configuration for job scraping."""
+    api_token: str = ""
+    actor_id: str = "apify/linkedin-jobs-scraper"
+
+
 class PrivacyConfig(BaseModel):
     """Privacy settings."""
     redact_pii: bool = True
@@ -42,6 +48,7 @@ class Config(BaseModel):
     cv: CVConfig
     gmail: GmailConfig
     llm: LLMConfig = Field(default_factory=LLMConfig)
+    apify: ApifyConfig = Field(default_factory=ApifyConfig)
     privacy: PrivacyConfig = Field(default_factory=PrivacyConfig)
     dry_run: bool = False
 
