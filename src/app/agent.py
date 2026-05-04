@@ -198,6 +198,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
 
         if qualifying:
             print(f"Step 6: Creating Gmail drafts for {len(qualifying)} jobs...")
+            drafts_created = 0
             for i, job in enumerate(qualifying[:config.search.count]):
                 try:
                     job_dir = DATA_DIR / "cvs" / str(job.id)
