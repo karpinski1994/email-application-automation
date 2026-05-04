@@ -215,7 +215,8 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
                             to=email_data.get("to", ""),
                             subject=email_data.get("subject", ""),
                             body=email_data.get("body", ""),
-                            attachment_path=pdf_path if pdf_path.exists() else None
+                            attachment_path=pdf_path if pdf_path.exists() else None,
+                            credentials_path=config.gmail.credentials_path
                         )
                     else:
                         draft_id = f"dry_run_{i}"
