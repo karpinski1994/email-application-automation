@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "email-application-automation"
+version = "0.1.0"
+description = "AI-driven job application automation system"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.0",
+    "pydantic-ai",
+    "httpx",
+    "rich",
+    "pyyaml",
+    "python-dotenv",
+    "google-auth-oauthlib",
+    "google-api-python-client",
+    "pdfplumber",
+    "weasyprint",
+    "tenacity",
+    # Note: sentence-transformers is NOT required.
+    # We use Ollama's native embedding API (nomic-embed-text) via HTTP.
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]

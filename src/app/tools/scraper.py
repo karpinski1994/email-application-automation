@@ -179,6 +179,9 @@ async def _scrape_with_apify(urls: list[str], config: ApifyConfig, count: int) -
                     if isinstance(item.get("applyMethod"), str)
                     else True
                 ),
+                remote_allowed=item.get("workRemoteAllowed"),
+                employment_type=item.get("employmentType"),
+                seniority_level=item.get("seniorityLevel"),
             )
             jobs.append(job)
         

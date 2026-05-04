@@ -24,6 +24,9 @@ This implementation uses a **data-driven caching pattern** where every step chec
 - [x] 0.2b `pip install httpx tenacity rich pyyaml python-dotenv` - Already installed
 - [x] 0.2c `pip install google-auth-oauthlib google-api-python-client` - INSTALLED
 - [x] 0.2d `pip install pdfplumber` - INSTALLED in venv
+- [x] 0.2e **Note:** `sentence-transformers` is NOT required.
+  We use Ollama's native embedding API (`/api/embeddings`) directly via `httpx`.
+  This avoids the `torch` dependency conflict.
 
 ### 0.3 Install Weasyprint (Has System Dependencies)
 - [x] 0.3a Test: `python -c "from weasyprint import HTML"` → SUCCESS (system deps OK)
@@ -33,8 +36,12 @@ This implementation uses a **data-driven caching pattern** where every step chec
 ### 0.4 Install Ollama (If Using Local LLM)
 - [x] 0.4a Check: `which ollama` OR `curl http://localhost:11434/v1/models` → INSTALLED at /usr/local/bin/ollama
 - [x] 0.4b If not installed: https://ollama.com/install - NOT NEEDED (already installed)
-- [x] 0.4c Pull model: `ollama pull qwen2.5:7b` - INSTALLED (4.7 GB)
+- [x] 0.4c Pull models:
+  - `ollama pull qwen2.5:7b` - INSTALLED (4.7 GB) — for CV personalization, cover letters
+  - `ollama pull nomic-embed-text` - INSTALLED (274 MB) — for job embedding similarity (Stage 1)
+  - `ollama pull llama3.2` - INSTALLED (2.0 GB) — for job scoring (Stage 2)
 - [x] 0.4d Test: `curl http://localhost:11434/v1/models` → Server responds (running)
+- [x] 0.4e Verify embedding API: `curl -s http://localhost:11434/api/embeddings -d '{"model":"nomic-embed-text","prompt":"test"}' | head -c 200` → works
 
 ---
 
@@ -76,13 +83,26 @@ This implementation uses a **data-driven caching pattern** where every step chec
 
 ---
 
-## Step 5: Module: Job Filter (Step 3) - Test Independently
+## Step 5: Module: Job Filter (Step 3) - Two-Stage Approach
 
-- [x] 5.1 Implement `filter.py` with filtering_agent (mock)
+- [x] 5.1 Implement two-stage filtering in `filter.py`:
+  - Stage 1: Embedding pre-filtering (nomic-embed-text via Ollama API)
+    * Computes CV embedding, job embeddings, cosine similarity
+    * Keeps top N jobs (default 20) for Stage 2
+    * Uses Ollama's native embedding API at `/api/embeddings`
+  - Stage 2: LLM scoring (llama3.2 via Ollama)
+    * Batches all shortlisted jobs into one prompt
+    * Scores each job 0-100, parses response
+    * Filters jobs with score >= threshold (default 70)
+  - No sentence-transformers needed (uses Ollama API directly)
 - [x] 5.2 Test: `python -c "from app.filter import filter_jobs; print('OK')"` → SUCCESS
 - [x] 5.3 SKIP: If `data/filtered_jobs.json` exists, load from file
 
 **Cache Files:** `data/filtered_jobs.json`, `data/filtered_out_jobs.json`
+**Ollama Models:** `nomic-embed-text` (embedding), `llama3.2` (scoring)
+
+- [x] 5.4 Tested with mock data: ✅ Works — 1 qualified (Frontend Engineer), 1 rejected (Junior Developer)
+- [x] 5.5 Uses OpenAI-compatible endpoint for LLM scoring (reliable)
 
 ---
 

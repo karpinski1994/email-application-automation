@@ -42,6 +42,14 @@ class PrivacyConfig(BaseModel):
     redact_pii: bool = True
 
 
+class FilterConfig(BaseModel):
+    """Filter configuration."""
+    embedding_shortlist_size: int = 20
+    llm_fit_threshold: int = 70
+    embedding_model: str = "nomic-embed-text"
+    scoring_model: str = "llama3.2"
+
+
 class Config(BaseModel):
     """Main configuration."""
     search: SearchConfig
@@ -49,6 +57,7 @@ class Config(BaseModel):
     gmail: GmailConfig
     llm: LLMConfig = Field(default_factory=LLMConfig)
     apify: ApifyConfig = Field(default_factory=ApifyConfig)
+    filter: FilterConfig = Field(default_factory=FilterConfig)
     privacy: PrivacyConfig = Field(default_factory=PrivacyConfig)
     dry_run: bool = False
 
@@ -66,6 +75,10 @@ class Job(BaseModel):
     posted_date: Optional[str] = None
     accepting_applications: Optional[bool] = None
     rejection_reason: Optional[str] = None
+    # Additional fields from Apify
+    remote_allowed: Optional[bool] = None
+    employment_type: Optional[str] = None
+    seniority_level: Optional[str] = None
 
 
 class FilterDecision(BaseModel):

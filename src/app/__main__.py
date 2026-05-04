@@ -14,6 +14,7 @@ def main():
     parser.add_argument("--force", "-f", action="store_true", help="Force re-run, ignore cache")
     parser.add_argument("--step", "-s", type=int, default=1, help="Start from step N (1-7)")
     parser.add_argument("--dry-run", action="store_true", help="Dry run, don't call external APIs")
+    parser.add_argument("--filter-only", action="store_true", help="Stop after filtering (step 3)")
     parser.add_argument("--count", "-c", type=int, default=50, help="Max jobs to process")
     parser.add_argument("--limit", "-l", type=int, default=None, help="Limit jobs for testing (overrides count)")
     parser.add_argument("--config", default="config.yaml", help="Config file path")
@@ -33,7 +34,7 @@ def main():
             print(f"Step: {args.step}")
             print()
             
-            summary = asyncio.run(run(config, force=args.force, step=args.step, dry_run=args.dry_run))
+            summary = asyncio.run(run(config, force=args.force, step=args.step, dry_run=args.dry_run, filter_only=args.filter_only))
             
             print()
             print("=" * 50)

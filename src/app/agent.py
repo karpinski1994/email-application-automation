@@ -2,73 +2,16 @@
 
 import asyncio
 import json
+import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
-from .config import load_config
-from .models import Config, RunSummary, Job
-from .utils import DATA_DIR, is_cached, save_json, load_json, ensure_data_dir
-
-from .tools.cv_parser import parse_cv, parse_cv_mock
-from .tools.scraper import scrape_jobs
-from .tools.filter import filter_jobs
-from .tools.email_finder import find_email
-from .tools.cover_letter import generate_cover_letter
-from .tools.cv_personalizer import personalize_cv
-from .tools.gmail_draft import create_draft
+from app.models import Job, RunSummary
+from app.utils import DATA_DIR, ensure_data_dir, is_cached, load_json, save_json
 
 
-def _load_jobs_from_apify_cache(jobs_path: Path) -> list[Job]:
-    """Load jobs from cached apify_results.json.
-    
-    Handles both formats:
-    - Raw Apify format (companyName, link, descriptionText, etc.)
-    - Already-converted Job model format (company, url, description, etc.)
-    """
-    raw_data = load_json(jobs_path)
-    jobs = []
-    
-    for i, item in enumerate(raw_data):
-        # Detect format: raw Apify has "companyName", Job model has "company"
-        if "companyName" in item or "link" in item:
-            # Raw Apify format → map to Job
-            job = Job(
-                id=item.get("id", f"job_{i+1}"),
-                title=item.get("title", "Unknown"),
-                company=item.get("companyName") or item.get("company") or "Unknown",
-                description=item.get("descriptionText", item.get("descriptionHtml", "")),
-                url=item.get("link", item.get("url", "")),
-                location=item.get("location", ""),
-                requirements=_extract_requirements_from_raw(item),
-                posted_date=item.get("postedAt", ""),
-                accepting_applications=(
-                    item.get("applyMethod", {}) != "none"
-                    if isinstance(item.get("applyMethod"), str)
-                    else True
-                ),
-            )
-        else:
-            # Already a Job model dict
-            job = Job(**item)
-        
-        jobs.append(job)
-    
-    return jobs
-
-
-def _extract_requirements_from_raw(item: dict) -> list[str]:
-    """Extract requirements from raw Apify job item."""
-    requirements = []
-    for key in ["skills", "experienceLevel", "employmentType", "jobFunction"]:
-        if value := item.get(key):
-            if isinstance(value, list):
-                requirements.extend(value)
-            else:
-                requirements.append(str(value))
-    return requirements
-
-
-async def run(config: Config, force: bool = False, step: int = 1, dry_run: bool = False) -> RunSummary:
+async def run(config, force=False, step=1, dry_run=False, filter_only=False):
     """Run the email application automation pipeline.
     
     Args:
@@ -76,10 +19,25 @@ async def run(config: Config, force: bool = False, step: int = 1, dry_run: bool 
         force: Force re-run even if cache exists
         step: Start from step N (1-7)
         dry_run: Don't call external APIs
+        filter_only: Stop after filtering (step 3)
     
     Returns:
         RunSummary with statistics
     """
+    # Lazy imports — only load modules when actually needed
+    if step <= 1:
+        from app.tools.cv_parser import parse_cv, parse_cv_mock
+        from app.config import load_config
+    if step <= 2:
+        from app.tools.scraper import scrape_jobs
+    if step <= 3:
+        from app.tools.filter import filter_jobs
+    if step <= 4:
+        from app.tools.cv_personalizer import personalize_all_filtered, personalize_cv
+    if step <= 7:
+        from app.tools.email_finder import find_email
+        from app.tools.cover_letter import generate_cover_letter
+        from app.tools.gmail_draft import create_draft
     ensure_data_dir()
     started_at = datetime.now().isoformat()
     errors = []
@@ -139,7 +97,7 @@ async def run(config: Config, force: bool = False, step: int = 1, dry_run: bool 
                 llm_base_url=llm_base_url,
                 llm_model=config.llm.model,
                 llm_api_key=llm_api_key,
-                llm_provider=config.llm.provider,  # For concurrency selection
+                llm_provider=config.llm.provider,
                 min_score=5,  # Lowered from 6 to allow "decent fit"
             )
             save_json(filtered_path, [j.model_dump() for j in qualifying])
@@ -149,13 +107,57 @@ async def run(config: Config, force: bool = False, step: int = 1, dry_run: bool 
             qualifying = [Job(**j) for j in qualifying_data]
         print(f"Step 3: {len(qualifying)} jobs qualified")
     
-    # Steps 4-7: Process each job
+    # Early return if filter-only mode
+    if filter_only:
+        finished_at = datetime.now().isoformat()
+        rejected_path = DATA_DIR / "filtered_out_jobs.json"
+        if rejected_path.exists():
+            rejected_data = load_json(rejected_path)
+            jobs_filtered = len(rejected_data)
+        else:
+            jobs_filtered = len(jobs) - len(qualifying)
+        return RunSummary(
+            started_at=started_at,
+            finished_at=finished_at,
+            jobs_found=len(jobs),
+            jobs_filtered=jobs_filtered,
+            jobs_qualified=len(qualifying),
+            drafts_created=0,
+            errors=errors,
+        )
+    
+    # Step 4: Personalize CVs (if starting at step 4, load from cache)
+    if step <= 4:
+        if step == 4 or (step < 4 and not qualifying):
+            # Load filtered jobs for CV personalization
+            filtered_path = DATA_DIR / "filtered_jobs.json"
+            if filtered_path.exists():
+                filtered_data = load_json(filtered_path)
+                qualifying = [Job(**j) for j in filtered_data]
+                print(f"Step 4: Loaded {len(qualifying)} jobs from cache for CV personalization")
+        
+        if qualifying and (step == 4 or step <= 4):
+            print(f"Step 4: Personalizing CVs for {len(qualifying)} jobs...")
+            pdf_paths = await personalize_all_filtered(force=force)
+            print(f"Step 4: {len(pdf_paths)} CVs generated in data/cvs/")
+            
+            if step == 4:
+                # Early return for step=4 only
+                finished_at = datetime.now().isoformat()
+                return RunSummary(
+                    started_at=started_at,
+                    finished_at=finished_at,
+                    jobs_found=len(qualifying),
+                    jobs_filtered=0,
+                    jobs_qualified=len(qualifying),
+                    drafts_created=0,
+                    errors=errors,
+                )
+    
+    # Steps 5-7: Process each job
     drafts_created = 0
     for i, job in enumerate(qualifying[:config.search.count]):
         try:
-            # Step 4: Personalize CV
-            cv_pdf = await personalize_cv(cv_text, job)
-            
             # Step 5: Find email
             email = await find_email(job.company, job.hiring_manager_name)
             if not email:
@@ -167,7 +169,7 @@ async def run(config: Config, force: bool = False, step: int = 1, dry_run: bool 
             
             # Step 7: Create Gmail draft
             if not dry_run:
-                draft_id = await create_draft(email, f"Application for {job.title}", letter, cv_pdf)
+                draft_id = await create_draft(email, f"Application for {job.title}", letter, await personalize_cv(cv_text, job))
             else:
                 draft_id = f"dry_run_{i}"
             
@@ -190,5 +192,57 @@ async def run(config: Config, force: bool = False, step: int = 1, dry_run: bool 
     )
     
     save_json(DATA_DIR / "run_summary.json", summary.model_dump())
-    
     return summary
+
+
+def _load_jobs_from_apify_cache(jobs_path):
+    """Load jobs from cached apify_results.json.
+    
+    Handles both formats:
+    - Raw Apify format (companyName, link, descriptionText, etc.)
+    - Already-converted Job model format (company, url, description, etc.)
+    """
+    raw_data = load_json(jobs_path)
+    jobs = []
+    
+    for i, item in enumerate(raw_data):
+        # Detect format: raw Apify has "companyName", Job model has "company"
+        if "companyName" in item or "link" in item:
+            # Raw Apify format → map to Job
+            job = Job(
+                id=item.get("id", f"job_{i+1}"),
+                title=item.get("title", "Unknown"),
+                company=item.get("companyName") or item.get("company") or "Unknown",
+                description=item.get("descriptionText", item.get("descriptionHtml", "")),
+                url=item.get("link", item.get("url", "")),
+                location=item.get("location", ""),
+                requirements=_extract_requirements_from_raw(item),
+                posted_date=item.get("postedAt", ""),
+                accepting_applications=(
+                    item.get("applyMethod", {}) != "none"
+                    if isinstance(item.get("applyMethod"), str)
+                    else True
+                ),
+                remote_allowed=item.get("workRemoteAllowed"),
+                employment_type=item.get("employmentType"),
+                seniority_level=item.get("seniorityLevel"),
+            )
+        else:
+            # Already a Job model dict
+            job = Job(**item)
+        
+        jobs.append(job)
+    
+    return jobs
+
+
+def _extract_requirements_from_raw(item):
+    """Extract requirements from raw Apify job item."""
+    requirements = []
+    for key in ["skills", "experienceLevel", "employmentType", "jobFunction"]:
+        if value := item.get(key):
+            if isinstance(value, list):
+                requirements.extend(value)
+            else:
+                requirements.append(str(value))
+    return requirements

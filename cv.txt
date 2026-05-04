@@ -1,0 +1,94 @@
+GABRIEL MENACHO
+LEAD FULL STACK SOFTWARE ENGINEER
+Location: Bolivia Phone: +591 60574733 Email: gabriel.menacho.silva@gmail.com Education: Bachelor's in
+Computer Systems Engineering & Law Languages: Spanish (Native) , English (C1)
+LinkedIn: gmenacho
+About
+Lead Full-Stack Software Engineer with 12+ years building and scaling production-grade web platforms for global
+companies including PayPal, HighJump, and Xtime. I specialize in high-performance React + TypeScript frontends tightly
+integrated with scalable Node.js, NestJS, and GraphQL backends. With strong leadership skills, I own complete end-to-end
+projects from concept to production, delivering secure, high-impact systems that drive measurable operational value ensuring
+productivity of the entire team.
+Tech Stack
+Frontend: React (8y), TypeScript (8y), JavaScript (10y), Redux / Zustand / RTK Query, Next.js, Angular and Vue
+Backend: Node.js (3y), NestJS, GraphQL, REST APIs, Go, Java (Spring) and .NET
+Databases: PostgreSQL, MongoDB, MySQL and SQL Server
+Cloud & DevOps: AWS (Lambda, S3, DynamoDB), Serverless, Terraform, Docker, CI/CD (GitHub Actions and Jenkins
+Testing: Jest (4y), Cypress and Mocha
+Tools & Practices: Git, Jira, Scrum/Scrumban, Storybook, Figma and Agile Metodologies
+Leadership: Agile/Scrum, Mentoring, CI/CD Strategy, Product Roadmap and 0 to 1 Development
+Experience
+Lead Sostware Developer - Front-End Developer - Blueyonder via Torc
+Led React + TypeScript component library for 6 apps, cutting UI inconsistencies and speeding delivery 40%.
+Architected front-end app and GitHub Actions CI/CD, reducing deployment time from days to hours.
+Built Jest suite coverage, enforcing SOLID and clean code for superior maintainability.
+Directed Agile/Scrum as front-end lead, shipping 4 major releases in 4 months with enterprise quality.
+Owned Storybook documentation for 35+ components, enabling faster design alignment and collaboration.
+MAR 2025 – PRESENT
+Senior Front-End Developer - Syndio via Turing
+NOV 2023 – JAN 2025
+Drove Agile/Scrum ceremonies and Jira/Confluence workflows, ensuring seamless cross-team delivery.
+Built responsive React + TypeScript applications with SASS and RTK Query, boosting UX and user experience by 45%.
+Designed and automated GitHub Actions + Codefresh CI/CD pipelines, reducing deployment time by half
+Implemented Jest unit + Cypress E2E testing, reaching 88% coverage and cutting production bugs.
+Applied clean code, SOLID and other Software Engineering principles across frontend architecture for scalable systems.
+OCT 2022 – JUN 2023
+Senior Full-Stack Developer - Catapult Labs via Encora
+Increased team productivity by 30% streamlining retrospective sessions and continuous improvement workflows.
+Modernized legacy AngularJS codebases with Atlaskit while enforcing clean code and SOLID principles.
+Delivered full-stack features and Jest-tested components for complex enterprise client applications.
+Led React + TypeScript + GraphQL development with CSS Modules and Node.js/MongoDB integrations.
+Designed and built custom Jira + Confluence automation tools that transformed Scrum retrospectives.
+Senior Full-Stack Developer - OnFrontiers, Inc. via Jobsity
+Spearheaded full-stack project from inception to production using React, Go Lang, and GraphQL.
+Designed advanced state management with Redux + Zustand, delivering complex enterprise features.
+Built and maintained React + TypeScript UIs with Material UI and Storybook for premium user experience.
+Owned end-to-end development and bug fixing across frontend and backend for US + LATAM teams.
+Led Scrumban processes with Jira + GitHub, ensuring seamless collaboration across 4 countries.
+JAN 2022 – SEPT 2022
+Senior Front-End Developer - PayPal via Taller Technologies
+Delivered React + TypeScript components and pages for PayPal’s core production applications.
+Managed dependency updates and conflict resolution across large-scale monorepos, ensuring zero downtime.
+Developed and fixed critical frontend features using GraphQL and Jest, enhancing user experience.
+Collaborated with global teams across USA, India, Brazil, and Argentina via Jira + GitHub.
+Applied clean code and SOLID principles in high-stakes fintech environment under Scrum.
+APR 2021 – DEC 2021
+Senior Full-Stack Developer - HighJump via Jalasoft
+JUL 2019 - APR 2021
+Developed VSCode extensions using OpenAPI schema to auto-generate APIs and boost developer velocity.
+Built interactive KPI data visualizations for supply chain management, enabling real-time data-driven decisions.
+Delivered full-stack features across React, Vue.js, Node.js, and .NET Core on Azure platform.
+Modernized legacy Knockout.js codebases to Vue.js while applying clean code and SOLID principles.
+Drove Scrumban workflows with Jira + GitHub for US-Bolivia distributed teams.
+Lead Full-Stack Developer - Xtime via CodeRoad Inc.
+JAN 2014 - APR 2019
+Led and mentored 9-developer team building secure, globally scalable SaaS traceability platform.
+Architected AWS Serverless solution with Lambda, DynamoDB, Terraform, and GraphQL for production-grade performance.
+Delivered full-stack React + Node.js features while modernizing legacy Ext.js and Angular 4 systems for US client.
+Implemented item-level traceability solutions on a production-grade cloud-hosted SaaS platform.
+Started as a junior software developer and promoted to team leader after 1 year of high impact delivery.
+Additional Skills, Certifications and Proyects
+Featured Project
+AI Legal Automations Consulting (2026)
+Built end-to-end agentic AI systems and automations for lawyers using Next.js, TypeScript, Pydantic AI, RAG, and
+OpenAI/Anthropic APIs. Automates marketing processes, document generation, and intelligent workflows with secure,
+production-grade architecture.
+Certifications
+AWS Partner: Sales Accreditation – Amazon Web Services, Nov 2025
+Diseño de sistemas y software basados en IA – DeepLearning.AI, Jun 2025
+Ingeniería de software en equipo con IA – DeepLearning.AI, Jun 2025
+Generative AI: Prompt Engineering – Coursera, Jun 2025
+IA generativa con grandes modelos lingüísticos – DeepLearning.AI & AWS, Jun 2025
+Ingeniería de indicaciones avanzada para todos – Vanderbilt University, Jun 2025
+Generative AI Essentials – Coursera, Jun 2025
+IA Generativa: Introducción y Aplicaciones – IBM, Jun 2025
+Education
+Bachelor of Laws – Recently completed, 2026
+Diploma in Full Stack Web Development – Universidad Autónoma del Beni “José Ballivián”
+, 2024
+Diploma in Higher Education (University Teaching) – Universidad Mayor de San Andrés, 2020
+Advanced Technician in English – Centro Boliviano Americano, 2005–2008
+Teaching & Leadership Experience
+Lecturer – Web Development Workshop, Universidad Privada Boliviana, March 2021
+Lecturer – Human Computer Interaction (Computer Systems Engineering), Universidad Privada Boliviana
+Lecturer – ICPC Programming Contest Preparation, Universidad Católica Boliviana, Feb 2017
