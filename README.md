@@ -512,8 +512,22 @@ email-application-automation/
 │           ├── personalized_cv.pdf
 │           └── email.json
 │
-└── my_cv.pdf              # Your CV (rename as needed)
+├── docs/                      # Development documentation
+│   ├── 01-business-case-project-charter.md
+│   ├── 02-business-requirements-document.md
+│   ├── 03-functional-requirements-document.md
+│   ├── 04-software-requirements-specification.md
+│   ├── 05-technical-requirements-document.md
+│   ├── 06-technical-design-document.md
+│   ├── 07-high-level-design.md
+│   ├── 08-low-level-design.md
+│   └── 09-implementation-plan.md
+│
+├── my_cv.pdf                  # Your CV (rename as needed)
+└── cv.txt                     # Your CV in text format (alternative)
 ```
+
+> **💡 Development Tip:** The `docs/` folder contains the full project documentation (Business Case, BRD, FRD, SRS, TRD, HLD, LLD). These files are useful when working with AI/agentic coding assistants (like Cursor, Windsurf, Claude Code) - you can paste relevant sections to give the AI better context about the project architecture and design decisions.
 
 ---
 
