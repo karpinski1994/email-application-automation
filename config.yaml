@@ -18,7 +18,7 @@ cv:
 gmail:
   draft_only: true
   token_path: "data/gmail_token.json"
-  credentials_path: "credentials.json"
+  credentials_path: "gmail-credentials.json"
 
 # LLM Configuration
 llm:
