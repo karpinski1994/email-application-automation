@@ -42,6 +42,8 @@ graph TD
     style Step6 fill:#c8edf7,stroke:#fff,color:#333
 ```
 
+> **Why Step 1 matters:** Your parsed CV text is used in **Step 3 (Filtering)** to compare against job descriptions using AI embeddings and LLM scoring, AND in **Step 5 (Personalize CV)** to generate tailored summaries and reorder skills for each job. Without parsing your CV first, none of the AI-powered steps work!
+
 ---
 
 ## 📋 Prerequisites
