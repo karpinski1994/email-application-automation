@@ -2,6 +2,8 @@
 
 AI-driven pipeline that automates the entire job application process. It searches LinkedIn for relevant jobs, filters them using AI, finds hiring manager emails, generates personalized CVs for each position, and creates ready-to-review Gmail drafts with personalized messages and your tailored CV attached - all you have to do is check and click send.
 
+> **💰 Almost Free** - The pipeline itself and all AI/LLM (via Ollama) are free. You only pay for optional APIs: Apify for scraping, AnyMailFinder for email discovery. **DuckDuckGo fallback is free** - if you run out of AnyMailFinder credits, the pipeline automatically uses web search to find emails at no cost.
+
 ## 📊 Workflow Diagram
 
 ```mermaid
@@ -50,7 +52,44 @@ graph TD
 | **Ollama** | For local LLM (optional, can use OpenAI) |
 | **Google Cloud Account** | For Gmail API OAuth2 |
 | **Apify Account** | For LinkedIn job scraping |
-| **AnyMailFinder Account** | For email discovery |
+| **AnyMailFinder Account** | For primary email discovery (paid) |
+| **DuckDuckGo** | Free fallback for email search (no setup needed) |
+
+### Install & Configure Ollama
+
+Ollama runs AI models locally - completely free. Install it from [ollama.ai](https://ollama.ai), then pull the models you need:
+
+```bash
+# Pull recommended models
+ollama pull qwen2.5:7b        # Main LLM (fast, good quality)
+ollama pull llama3.2:3b      # For job scoring/filtering
+ollama pull nomic-embed-text # For embedding similarity
+
+# Verify installed models
+ollama list
+```
+
+**Recommended Models:**
+
+| Model | Size | Use Case | RAM |
+|-------|------|----------|-----|
+| `qwen2.5:7b` | ~5GB | Main LLM for CV tailoring, email generation | 8GB |
+| `llama3.2:3b` | ~2GB | Job filtering/scoring (faster, cheaper) | 4GB |
+| `nomic-embed-text` | ~274MB | Embedding similarity for job pre-filtering | 1GB |
+
+**To use Ollama:**
+1. Run `ollama serve` in background (or it starts automatically)
+2. The pipeline connects to `http://localhost:11434/v1` by default
+3. Configure in `config.yaml` if you use a different port or model
+
+**Alternative: OpenAI**
+If you prefer cloud-based LLM instead of local Ollama, set in `config.yaml`:
+```yaml
+llm:
+  provider: "openai"
+  model: "gpt-4o-mini"
+  api_key: "${OPENAI_API_KEY}"  # Set in .env
+```
 
 ### Install Dependencies
 
@@ -110,8 +149,12 @@ email_finder:
 # Apify (Required - for job scraping)
 APIFY_API_KEY=apify_api_XXXXXXXXXXXXXXXXXXXX
 
-# AnyMailFinder (Required - for email discovery)
+# AnyMailFinder (Primary - for email discovery)
 ANYMAILFINDER_API_KEY=XXXXXXXXXXXXXXXXXXXX
+
+# DuckDuckGo fallback (free - no API key needed)
+# The pipeline automatically falls back to web search if AnyMailFinder fails or runs out of credits
+# No configuration needed - it just works!
 
 # OpenAI (Optional - only if using provider: "openai")
 OPENAI_API_KEY=sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
