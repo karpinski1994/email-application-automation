@@ -36,6 +36,8 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
         from app.tools.email_finder import find_emails_for_jobs
     if step <= 5:
         from app.tools.cv_personalizer import personalize_all_filtered, personalize_cv
+    if step <= 6:
+        from app.tools.gmail_draft import create_draft
     ensure_data_dir()
     started_at = datetime.now().isoformat()
     errors = []
@@ -185,36 +187,60 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
                 errors=errors,
             )
     
-    # Steps 6-7: Process each job (cover letter + gmail draft)
-    from app.tools.cover_letter import generate_cover_letter
-    from app.tools.gmail_draft import create_draft
-    
-    emails_path = DATA_DIR / "emails.json"
-    emails = load_json(emails_path) if emails_path.exists() else {}
-    
-    drafts_created = 0
-    for i, job in enumerate(qualifying[:config.search.count]):
-        try:
-            job_email = emails.get(job.id, {})
-            to_email = job_email.get("email", "")
-            if not to_email:
-                errors.append(f"{job.id}: No email found")
-                continue
-            
-            # Step 6: Generate cover letter
-            letter = await generate_cover_letter(job, cv_text)
-            
-            # Step 7: Create Gmail draft
-            if not dry_run:
-                draft_id = await create_draft(to_email, f"Application for {job.title}", letter, await personalize_cv(cv_text, job))
-            else:
-                draft_id = f"dry_run_{i}"
-            
-            drafts_created += 1
-            print(f"  Job {i+1}/{len(qualifying)}: Created draft for {job.title}")
-            
-        except Exception as e:
-            errors.append(f"{job.id}: {str(e)}")
+    # Step 6: Create Gmail drafts
+    if step <= 6:
+        if step == 6:
+            filtered_path = DATA_DIR / "filtered_jobs.json"
+            if filtered_path.exists():
+                filtered_data = load_json(filtered_path)
+                qualifying = [Job(**j) for j in filtered_data]
+                print(f"Step 6: Loaded {len(qualifying)} jobs from cache for Gmail drafts")
+
+        if qualifying:
+            print(f"Step 6: Creating Gmail drafts for {len(qualifying)} jobs...")
+            for i, job in enumerate(qualifying[:config.search.count]):
+                try:
+                    job_dir = DATA_DIR / "cvs" / str(job.id)
+                    email_json_path = job_dir / "email.json"
+                    pdf_path = job_dir / "personalized_cv.pdf"
+
+                    if not email_json_path.exists():
+                        errors.append(f"{job.id}: No email.json found - run step 5 first")
+                        continue
+
+                    email_data = load_json(email_json_path)
+
+                    if not dry_run:
+                        draft_id = await create_draft(
+                            to=email_data.get("to", ""),
+                            subject=email_data.get("subject", ""),
+                            body=email_data.get("body", ""),
+                            attachment_path=pdf_path if pdf_path.exists() else None
+                        )
+                    else:
+                        draft_id = f"dry_run_{i}"
+
+                    drafts_created += 1
+                    print(f"  Job {i+1}/{len(qualifying)}: Created draft for {job.company}")
+
+                except Exception as e:
+                    errors.append(f"{job.id}: {str(e)}")
+
+            print(f"Step 6: {drafts_created} Gmail drafts created")
+        else:
+            print("Step 6: No qualifying jobs to create drafts for")
+
+        if step == 6:
+            finished_at = datetime.now().isoformat()
+            return RunSummary(
+                started_at=started_at,
+                finished_at=finished_at,
+                jobs_found=len(jobs) if 'jobs' in dir() else 0,
+                jobs_filtered=0,
+                jobs_qualified=len(qualifying),
+                drafts_created=drafts_created,
+                errors=errors,
+            )
     
     finished_at = datetime.now().isoformat()
     

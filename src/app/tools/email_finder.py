@@ -1,4 +1,4 @@
-"""Email Finder - Finds hiring manager emails via AnyMailFinder API."""
+"""Email Finder - Finds hiring manager emails via AnyMailFinder API with web fallback."""
 
 import asyncio
 import json
@@ -9,7 +9,8 @@ from typing import Optional
 
 import httpx
 
-from app.models import EmailFinderConfig, Job
+from ..models import EmailFinderConfig, Job
+from . import web_email_finder
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +26,7 @@ def _extract_domain_from_url(url: str) -> str:
     return domain
 
 
-def _get_domains_for_job(job: Job) -> list[str]:
-    """Get candidate domains for a job, preferring company_website over guessing."""
-    if job.company_website:
-        domain = _extract_domain_from_url(job.company_website)
-        if domain and "." in domain:
-            return [domain]
-    return _company_to_domains(job.company)
+def _company_to_domains(company: str) -> list[str]:
     """Generate candidate domains from a company name.
 
     Strips common suffixes, lowercases, removes spaces/special chars,
@@ -47,6 +42,15 @@ def _get_domains_for_job(job: Job) -> list[str]:
     return [f"{cleaned}.com", f"{cleaned}.io", f"{cleaned}.co"]
 
 
+def _get_domains_for_job(job: Job) -> list[str]:
+    """Get candidate domains for a job, preferring company_website over guessing."""
+    if job.company_website:
+        domain = _extract_domain_from_url(job.company_website)
+        if domain and "." in domain:
+            return [domain]
+    return _company_to_domains(job.company)
+
+
 async def find_email_for_job(
     job: Job,
     api_key: str,
@@ -58,11 +62,13 @@ async def find_email_for_job(
     Uses job.company_website for domain if available, otherwise guesses from company name.
 
     Returns:
-        {"email": str, "status": "valid"|"risky"|"not_found"|"error", "domain_used": str}
+        {"email": str, "status": "valid"|"risky"|"not_found"|"error"|"credit_exhausted", "domain_used": str, "credit_exhausted": bool}
     """
     domains = _get_domains_for_job(job)
     if not domains:
-        return {"email": "", "status": "not_found", "domain_used": ""}
+        return {"email": "", "status": "not_found", "domain_used": "", "credit_exhausted": False}
+
+    credit_exhausted = False
 
     for domain in domains[:max_attempts]:
         try:
@@ -91,6 +97,7 @@ async def find_email_for_job(
                 body = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
                 msg = body.get("message", "payment required or no data")
                 print(f"    {domain}: 402 — {msg}")
+                credit_exhausted = True
                 await asyncio.sleep(2)
                 continue
 
@@ -98,11 +105,11 @@ async def find_email_for_job(
             data = response.json()
             email = data.get("email", "")
             email_status = data.get("email_status", "not_found")
-            
+
             print(f"    {domain}: {email_status} — {email or 'no email'}")
 
             if email_status in ("valid", "risky") and email:
-                return {"email": email, "status": email_status, "domain_used": domain}
+                return {"email": email, "status": email_status, "domain_used": domain, "credit_exhausted": False}
 
         except httpx.HTTPStatusError as e:
             print(f"    {domain}: HTTP {e.response.status_code}")
@@ -111,7 +118,7 @@ async def find_email_for_job(
 
         await asyncio.sleep(2)
 
-    return {"email": "", "status": "not_found", "domain_used": domains[0]}
+    return {"email": "", "status": "not_found", "domain_used": domains[0], "credit_exhausted": credit_exhausted}
 
 
 async def find_emails_for_jobs(
@@ -136,16 +143,50 @@ async def find_emails_for_jobs(
     api_key = config.api_key
     if not api_key or api_key.startswith("${"):
         print("  ❌ ANYMAILFINDER_API_KEY not set — skipping email finding")
-        for job in jobs:
-            if job.id not in results:
-                results[job.id] = {
-                    "email": "",
-                    "status": "error",
-                    "company": job.company,
-                    "domain_used": "",
-                    "category": "",
-                }
+        if config.fallback_enabled:
+            print("  → Attempting web search fallback...")
+            for job in jobs:
+                if job.id not in results or results[job.id].get("status") != "valid":
+                    domain = _extract_domain_from_url(job.company_website) if job.company_website else None
+                    if not domain:
+                        domains = _company_to_domains(job.company)
+                        domain = domains[0] if domains else None
+                    if domain:
+                        web_result = await web_email_finder.find_email_via_web(
+                            job.company, domain, max_attempts=config.fallback_max_attempts
+                        )
+                        emails = web_result.get("emails", [])
+                        if emails:
+                            best = emails[0]
+                            results[job.id] = {
+                                "email": best["email"],
+                                "status": "fallback_verified" if best["type"] == "verified" else "fallback_inferred",
+                                "company": job.company,
+                                "domain_used": domain,
+                                "category": f"web_fallback ({best['confidence']})",
+                            }
+                            print(f"  → {job.company}: {best['confidence']} ({best['type']}) — {best['email']}")
+                        else:
+                            results[job.id] = {
+                                "email": "",
+                                "status": "not_found",
+                                "company": job.company,
+                                "domain_used": domain,
+                                "category": "",
+                            }
+        else:
+            for job in jobs:
+                if job.id not in results:
+                    results[job.id] = {
+                        "email": "",
+                        "status": "error",
+                        "company": job.company,
+                        "domain_used": "",
+                        "category": "",
+                    }
         return results
+
+    global_credit_exhausted = False
 
     for job in jobs:
         if job.id in results and results[job.id].get("status") == "valid" and not force:
@@ -157,6 +198,25 @@ async def find_emails_for_jobs(
         result = await find_email_for_job(
             job, api_key, config.categories, config.max_domain_attempts
         )
+
+        if result.get("credit_exhausted"):
+            global_credit_exhausted = True
+
+        if result["status"] == "not_found" and result.get("credit_exhausted") and config.fallback_enabled:
+            print(f"  → {job.company}: credit exhausted, trying web fallback...")
+            domain = result["domain_used"]
+            if domain:
+                web_result = await web_email_finder.find_email_via_web(
+                    job.company, domain, max_attempts=config.fallback_max_attempts
+                )
+                emails = web_result.get("emails", [])
+                if emails:
+                    best = emails[0]
+                    result["email"] = best["email"]
+                    result["status"] = "fallback_verified" if best["type"] == "verified" else "fallback_inferred"
+                    result["source"] = f"web ({best['confidence']})"
+                    print(f"  → {job.company}: {best['confidence']} ({best['type']}) — {best['email']}")
+
         results[job.id] = {
             "email": result["email"],
             "status": result["status"],
@@ -169,6 +229,9 @@ async def find_emails_for_jobs(
 
         if result["status"] != "valid":
             await asyncio.sleep(2)
+
+    if global_credit_exhausted and config.fallback_enabled:
+        print("  ⚠️ AnyMailFinder credits exhausted - remaining jobs will use web fallback")
 
     emails_path.parent.mkdir(parents=True, exist_ok=True)
     emails_path.write_text(json.dumps(results, indent=2, default=str))

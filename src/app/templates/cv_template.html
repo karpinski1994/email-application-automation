@@ -25,7 +25,7 @@
 </head>
 <body>
     <h1>{{ name }}</h1>
-    <div class="subtitle">{{ title }}</div>
+    <div class="subtitle">{{ cv_title if cv_title else title }}</div>
     <div class="contact">
         {% if location %}<span>{{ location }}</span>{% endif %}
         {% if phone %}<span>{{ phone }}</span>{% endif %}

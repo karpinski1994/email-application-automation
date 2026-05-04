@@ -52,6 +52,8 @@ email_finder:
     - "engineering"
     - "hr"
   max_domain_attempts: 3
+  fallback_enabled: true
+  fallback_max_attempts: 3
 
 # Dry run mode (for testing without API calls)
 dry_run: false

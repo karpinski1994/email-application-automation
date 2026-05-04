@@ -19,6 +19,7 @@ dependencies = [
     "pdfplumber",
     "weasyprint",
     "tenacity",
+    "ddgs>=7.0",
     # Note: sentence-transformers is NOT required.
     # We use Ollama's native embedding API (nomic-embed-text) via HTTP.
 ]

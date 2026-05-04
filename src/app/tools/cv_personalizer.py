@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML
 from app.models import Job
 from app.config import load_config
 
@@ -249,11 +250,12 @@ def get_parsed_cv(cv_text: str) -> dict:
 
 
 async def _tailor_for_job(cv_data: dict, job: Job) -> dict:
-    """Quick LLM call to generate a tailored summary and reordered skills.
+    """Quick LLM call to generate a tailored summary, reordered skills, and adaptive CV title.
 
     Returns a dict with:
     - tailored_summary: 2-3 sentence summary for this specific job
     - tailored_skills: comma-separated skills reordered by relevance
+    - cv_title: adaptive job title for CV header (e.g., "LEAD FRONT-END DEVELOPER")
     """
     config = load_config()
     llm_model = config.llm.model
@@ -262,17 +264,19 @@ async def _tailor_for_job(cv_data: dict, job: Job) -> dict:
 
     system_prompt = """You tailor CV content for specific job postings.
 
-Return ONLY a JSON object with two fields:
+Return ONLY a JSON object with THREE fields:
 - tailored_summary: A 2-3 sentence professional summary highlighting why this candidate fits THIS specific job
 - tailored_skills: A comma-separated list of the candidate's skills, reordered with the most relevant ones first for THIS job
+- cv_title: A short job title (3-6 words) for the CV header that matches the job position (e.g., "LEAD FRONT-END DEVELOPER", "SENIOR BACK-END ENGINEER", "FULL STACK LEAD", "SENIOR FULL STACK ENGINEER")
 
-Do NOT invent skills. Only reorder what's provided. Keep the summary factual."""
+Do NOT invent skills. Only reorder what's provided. Keep the summary factual. Use appropriate seniority and role keywords from the job description."""
 
     user_prompt = f"""Job: {job.title} at {job.company}
 Description: {job.description[:800]}
 
 Current summary: {cv_data.get('summary', '')}
 Current skills: {cv_data.get('skills_flat', '')}
+Default title: {cv_data.get('title', 'LEAD FULL STACK SOFTWARE ENGINEER')}
 
 Return ONLY the JSON object."""
 
@@ -308,6 +312,7 @@ Return ONLY the JSON object."""
         return {
             "tailored_summary": result.get("tailored_summary", cv_data.get("summary", "")),
             "tailored_skills": result.get("tailored_skills", cv_data.get("skills_flat", "")),
+            "cv_title": result.get("cv_title", cv_data.get("title", "")),
         }
 
     except Exception as e:
@@ -315,6 +320,7 @@ Return ONLY the JSON object."""
         return {
             "tailored_summary": cv_data.get("summary", ""),
             "tailored_skills": cv_data.get("skills_flat", ""),
+            "cv_title": cv_data.get("title", ""),
         }
 
 
@@ -371,6 +377,11 @@ async def personalize_cv(cv_text: str, job: Job, force: bool = False, to_email: 
     html_content = template.render(**cv_data)
     output_path.write_text(html_content)
 
+    pdf_path = job_dir / "personalized_cv.pdf"
+    logger.info(f"  Converting HTML to PDF...")
+    HTML(string=html_content).write_pdf(pdf_path)
+    logger.info(f"  ✅ PDF saved: {pdf_path.name}")
+
     from app.tools.email_composer import compose_email
     email_data = compose_email(job, cv_text, cv_data=cv_data, to_email=to_email)
     email_path = job_dir / "email.json"
@@ -414,15 +425,15 @@ async def personalize_all_filtered(force: bool = False) -> list:
     for job in jobs:
         job_email = emails.get(job.id, {})
         status = job_email.get("status", "")
-        if status in ("valid", "risky"):
+        if status in ("valid", "risky", "fallback_verified", "fallback_inferred"):
             eligible.append((job, job_email.get("email", "")))
         else:
             skipped_no_email.append(job)
 
     if skipped_no_email:
-        logger.info(f"Skipping {len(skipped_no_email)} jobs without valid email: {[j.company for j in skipped_no_email]}")
+        logger.info(f"Skipping {len(skipped_no_email)} jobs without email: {[j.company for j in skipped_no_email]}")
 
-    logger.info(f"📄 Generating personalized CVs for {len(eligible)} jobs (with valid emails)...")
+    logger.info(f"📄 Generating personalized CVs for {len(eligible)} jobs (with emails found)...")
 
     html_paths = []
     for i, (job, to_email) in enumerate(eligible):

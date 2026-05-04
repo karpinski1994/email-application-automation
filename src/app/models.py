@@ -56,6 +56,8 @@ class EmailFinderConfig(BaseModel):
     api_key: str = ""
     categories: list[str] = Field(default_factory=lambda: ["engineering", "hr"])
     max_domain_attempts: int = 3
+    fallback_enabled: bool = True
+    fallback_max_attempts: int = 3
 
 
 class Config(BaseModel):
