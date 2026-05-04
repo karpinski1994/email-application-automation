@@ -323,6 +323,59 @@ python -m app --step 6
 
 ---
 
+## 🔧 Customizing for Your Needs
+
+The pipeline is designed to be modular - you can adjust prompts and configurations to fit your specific requirements.
+
+### Filter Prompts (Make filtering more/less strict)
+
+In `src/app/tools/filter.py`:
+
+1. **Adjust embedding shortlist size** - More jobs pass to LLM review:
+   ```yaml
+   filter:
+     embedding_shortlist_size: 50   # Increase to review more jobs
+   ```
+
+2. **Change LLM scoring threshold** - Lower = more jobs qualify:
+   ```yaml
+   filter:
+     llm_fit_threshold: 20   # Lower = more lenient, higher = stricter
+   ```
+
+3. **Modify the system prompt** - The filter uses a hardcoded system prompt in `filter.py`. You can edit the `SYSTEM_PROMPT` variable to:
+   - Add specific technologies to favor/avoid
+   - Change seniority preferences
+   - Adjust scoring criteria
+
+### CV Personalization
+
+In `src/app/tools/cv_personalizer.py`:
+
+1. **Tailoring prompt** - The `_tailor_for_job()` function calls the LLM to generate:
+   - `tailored_summary` - 2-3 sentence summary for the specific job
+   - `tailored_skills` - Skills reordered by relevance
+   - `cv_title` - Adaptive job title for the CV header
+   
+   You can modify the system prompt in that function to change how the LLM tailors your CV.
+
+2. **CV parsing** - The `_parse_cv_text()` function uses deterministic regex to parse your cv.txt. If your CV format is different, you may need to adjust the parsing logic.
+
+### Email Composer
+
+In `src/app/tools/email_composer.py`:
+
+- Modify the `compose_email()` function to change the email body template, subject line format, or add/remove sections.
+
+### Search URLs
+
+In `config.yaml`:
+- Add more URLs for different job titles, locations, or platforms
+- Try different LinkedIn search queries
+- Add Indeed, Glassdoor, or other job board URLs (if Apify supports them)
+
+---
+
 ## 📁 Project Structure
 
 ```
