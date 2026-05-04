@@ -5,6 +5,7 @@
 *.env
 .env.*
 credentials.json
+gmail-credentials.json
 *token.json        # Catches gmail_token.json wherever it is
 
 # =========================
