@@ -222,6 +222,25 @@ The template uses these Jinja2 variables:
 
 ## 🚀 Running the Pipeline
 
+### Virtual Environment & PYTHONPATH
+
+If you're using a virtual environment, activate it first and set PYTHONPATH:
+
+```bash
+# Activate virtual environment
+source .venv/bin/activate
+
+# Run with PYTHONPATH set
+PYTHONPATH=src python3 -m app run --step=6 --force
+```
+
+Or in one line:
+```bash
+PYTHONPATH=src python3 -m app run
+```
+
+The `PYTHONPATH=src` is needed because the app imports from `src/app/`, so Python needs to know where to find the `app` module.
+
 ### Full Pipeline
 
 ```bash
