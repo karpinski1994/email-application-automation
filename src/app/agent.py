@@ -33,11 +33,9 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
     if step <= 3:
         from app.tools.filter import filter_jobs
     if step <= 4:
+        from app.tools.email_finder import find_emails_for_jobs
+    if step <= 5:
         from app.tools.cv_personalizer import personalize_all_filtered, personalize_cv
-    if step <= 7:
-        from app.tools.email_finder import find_email
-        from app.tools.cover_letter import generate_cover_letter
-        from app.tools.gmail_draft import create_draft
     ensure_data_dir()
     started_at = datetime.now().isoformat()
     errors = []
@@ -126,41 +124,80 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
             errors=errors,
         )
     
-    # Step 4: Personalize CVs (if starting at step 4, load from cache)
+    # Step 4: Find Emails (if starting at step 4, load filtered jobs from cache)
     if step <= 4:
         if step == 4 or (step < 4 and not qualifying):
-            # Load filtered jobs for CV personalization
             filtered_path = DATA_DIR / "filtered_jobs.json"
             if filtered_path.exists():
                 filtered_data = load_json(filtered_path)
                 qualifying = [Job(**j) for j in filtered_data]
-                print(f"Step 4: Loaded {len(qualifying)} jobs from cache for CV personalization")
+                print(f"Step 4: Loaded {len(qualifying)} jobs from cache for email finding")
         
-        if qualifying and (step == 4 or step <= 4):
-            print(f"Step 4: Personalizing CVs for {len(qualifying)} jobs...")
-            pdf_paths = await personalize_all_filtered(force=force)
-            print(f"Step 4: {len(pdf_paths)} CVs generated in data/cvs/")
+        if qualifying:
+            print(f"Step 4: Finding emails for {len(qualifying)} jobs...")
+            emails = await find_emails_for_jobs(qualifying, config.email_finder, force=force)
+            save_json(DATA_DIR / "emails.json", emails)
             
-            if step == 4:
-                # Early return for step=4 only
-                finished_at = datetime.now().isoformat()
-                return RunSummary(
-                    started_at=started_at,
-                    finished_at=finished_at,
-                    jobs_found=len(qualifying),
-                    jobs_filtered=0,
-                    jobs_qualified=len(qualifying),
-                    drafts_created=0,
-                    errors=errors,
-                )
+            valid_count = sum(1 for v in emails.values() if v.get("status") == "valid")
+            risky_count = sum(1 for v in emails.values() if v.get("status") == "risky")
+            not_found_count = sum(1 for v in emails.values() if v.get("status") in ("not_found", "error"))
+            print(f"Step 4: Found {valid_count}/{len(emails)} emails ({valid_count} valid, {risky_count} risky, {not_found_count} not found)")
+        else:
+            print("Step 4: No qualifying jobs to find emails for")
+        
+        if step == 4:
+            finished_at = datetime.now().isoformat()
+            return RunSummary(
+                started_at=started_at,
+                finished_at=finished_at,
+                jobs_found=len(jobs) if 'jobs' in dir() else 0,
+                jobs_filtered=0,
+                jobs_qualified=len(qualifying),
+                drafts_created=0,
+                errors=errors,
+            )
     
-    # Steps 5-7: Process each job
+    # Step 5: Personalize CVs (if starting at step 5, load from cache)
+    if step <= 5:
+        if step == 5 or (step < 5 and not qualifying):
+            filtered_path = DATA_DIR / "filtered_jobs.json"
+            if filtered_path.exists():
+                filtered_data = load_json(filtered_path)
+                qualifying = [Job(**j) for j in filtered_data]
+                print(f"Step 5: Loaded {len(qualifying)} jobs from cache for CV personalization")
+        
+        if qualifying:
+            print(f"Step 5: Personalizing CVs for {len(qualifying)} jobs...")
+            pdf_paths = await personalize_all_filtered(force=force)
+            print(f"Step 5: {len(pdf_paths)} CVs generated in data/cvs/")
+        else:
+            print("Step 5: No qualifying jobs to personalize CVs for")
+        
+        if step == 5:
+            finished_at = datetime.now().isoformat()
+            return RunSummary(
+                started_at=started_at,
+                finished_at=finished_at,
+                jobs_found=len(jobs) if 'jobs' in dir() else 0,
+                jobs_filtered=0,
+                jobs_qualified=len(qualifying),
+                drafts_created=0,
+                errors=errors,
+            )
+    
+    # Steps 6-7: Process each job (cover letter + gmail draft)
+    from app.tools.cover_letter import generate_cover_letter
+    from app.tools.gmail_draft import create_draft
+    
+    emails_path = DATA_DIR / "emails.json"
+    emails = load_json(emails_path) if emails_path.exists() else {}
+    
     drafts_created = 0
     for i, job in enumerate(qualifying[:config.search.count]):
         try:
-            # Step 5: Find email
-            email = await find_email(job.company, job.hiring_manager_name)
-            if not email:
+            job_email = emails.get(job.id, {})
+            to_email = job_email.get("email", "")
+            if not to_email:
                 errors.append(f"{job.id}: No email found")
                 continue
             
@@ -169,7 +206,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
             
             # Step 7: Create Gmail draft
             if not dry_run:
-                draft_id = await create_draft(email, f"Application for {job.title}", letter, await personalize_cv(cv_text, job))
+                draft_id = await create_draft(to_email, f"Application for {job.title}", letter, await personalize_cv(cv_text, job))
             else:
                 draft_id = f"dry_run_{i}"
             
@@ -226,6 +263,7 @@ def _load_jobs_from_apify_cache(jobs_path):
                 remote_allowed=item.get("workRemoteAllowed"),
                 employment_type=item.get("employmentType"),
                 seniority_level=item.get("seniorityLevel"),
+                company_website=item.get("companyWebsite") or None,
             )
         else:
             # Already a Job model dict

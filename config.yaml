@@ -40,9 +40,18 @@ privacy:
 # Filter Configuration (two-stage: embedding + LLM)
 filter:
   embedding_shortlist_size: 50   # How many jobs pass to LLM (increased for better coverage)
-  llm_fit_threshold: 30         # Minimum LLM score to qualify (lowered for frontend roles)
+  llm_fit_threshold: 20         # Minimum LLM score to qualify (lowered for frontend roles)
   embedding_model: "nomic-embed-text"
   scoring_model: "llama3.2"
+
+# Email Finder Configuration
+email_finder:
+  provider: "anymailfinder"
+  api_key: "${ANYMAILFINDER_API_KEY}"
+  categories:
+    - "engineering"
+    - "hr"
+  max_domain_attempts: 3
 
 # Dry run mode (for testing without API calls)
 dry_run: false

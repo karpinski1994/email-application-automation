@@ -303,6 +303,7 @@ def _raw_to_job(
         remote_allowed=item.get("workRemoteAllowed"),
         employment_type=item.get("employmentType"),
         seniority_level=item.get("seniorityLevel"),
+        company_website=item.get("companyWebsite") or None,
     )
 
 
@@ -346,6 +347,23 @@ async def filter_jobs(
     
     config = load_config()
     filter_config = config.filter
+    
+    # ── Pre-filter: remove jobs without company website ────────────
+    no_website = []
+    website_filtered = []
+    for item in raw_data:
+        website = item.get("companyWebsite")
+        if not website or website == "N/A":
+            job = _raw_to_job(item, 0, 0, "No company website", "pre-filter", filter_config.llm_fit_threshold)
+            job.rejection_reason = "No company website — cannot find email"
+            no_website.append(job)
+        else:
+            website_filtered.append(item)
+    
+    if no_website:
+        logger.info(f"🔍 Pre-filter: {len(no_website)} jobs rejected (no company website)")
+    
+    raw_data = website_filtered
     
     logger.info(f"🔍 Filtering {total} jobs using two-stage approach")
     logger.info(f"   Embedding model: {filter_config.embedding_model}")
@@ -394,7 +412,9 @@ async def filter_jobs(
             rejected.append(job)
     
     logger.info(f"\n{'='*60}")
-    logger.info(f"FINAL: {len(qualifying)} qualified, {len(rejected)} rejected")
+    logger.info(f"FINAL: {len(qualifying)} qualified, {len(rejected) + len(no_website)} rejected ({len(no_website)} no website, {len(rejected)} low score)")
     logger.info(f"Total time: {time.time()-t0:.1f}s")
+    
+    rejected.extend(no_website)
     
     return qualifying, rejected

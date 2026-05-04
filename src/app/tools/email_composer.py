@@ -12,7 +12,7 @@ def _extract_candidate_email(cv_text: str) -> str:
     return match.group(0) if match else CANDIDATE_EMAIL
 
 
-def compose_email(job: Job, cv_text: str, cv_data: dict = None) -> dict:
+def compose_email(job: Job, cv_text: str, cv_data: dict = None, to_email: str = None) -> dict:
     """Generate a personalized application email for a job.
 
     Uses already-personalized CV data to build the email body without
@@ -52,7 +52,7 @@ def compose_email(job: Job, cv_text: str, cv_data: dict = None) -> dict:
         )
 
     return {
-        "to": f"PENDING: find email for {job.company}",
+        "to": to_email or f"PENDING: find email for {job.company}",
         "cc": candidate_email,
         "subject": f"RE: {job.title}",
         "body": body,

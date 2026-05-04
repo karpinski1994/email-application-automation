@@ -50,6 +50,14 @@ class FilterConfig(BaseModel):
     scoring_model: str = "llama3.2"
 
 
+class EmailFinderConfig(BaseModel):
+    """Email finder configuration."""
+    provider: str = "anymailfinder"
+    api_key: str = ""
+    categories: list[str] = Field(default_factory=lambda: ["engineering", "hr"])
+    max_domain_attempts: int = 3
+
+
 class Config(BaseModel):
     """Main configuration."""
     search: SearchConfig
@@ -58,6 +66,7 @@ class Config(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     apify: ApifyConfig = Field(default_factory=ApifyConfig)
     filter: FilterConfig = Field(default_factory=FilterConfig)
+    email_finder: EmailFinderConfig = Field(default_factory=EmailFinderConfig)
     privacy: PrivacyConfig = Field(default_factory=PrivacyConfig)
     dry_run: bool = False
 
@@ -79,6 +88,7 @@ class Job(BaseModel):
     remote_allowed: Optional[bool] = None
     employment_type: Optional[str] = None
     seniority_level: Optional[str] = None
+    company_website: Optional[str] = None
 
 
 class FilterDecision(BaseModel):

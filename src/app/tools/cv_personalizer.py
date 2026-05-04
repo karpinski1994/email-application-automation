@@ -318,7 +318,7 @@ Return ONLY the JSON object."""
         }
 
 
-async def personalize_cv(cv_text: str, job: Job, force: bool = False) -> Path:
+async def personalize_cv(cv_text: str, job: Job, force: bool = False, to_email: str = None) -> Path:
     """Generate personalized CV file for a job.
 
     Args:
@@ -372,7 +372,7 @@ async def personalize_cv(cv_text: str, job: Job, force: bool = False) -> Path:
     output_path.write_text(html_content)
 
     from app.tools.email_composer import compose_email
-    email_data = compose_email(job, cv_text, cv_data=cv_data)
+    email_data = compose_email(job, cv_text, cv_data=cv_data, to_email=to_email)
     email_path = job_dir / "email.json"
     email_path.write_text(json.dumps(email_data, indent=2, default=str))
 
@@ -382,9 +382,10 @@ async def personalize_cv(cv_text: str, job: Job, force: bool = False) -> Path:
 
 
 async def personalize_all_filtered(force: bool = False) -> list:
-    """Generate personalized CVs for all filtered jobs.
+    """Generate personalized CVs for all filtered jobs with valid emails.
 
-    Reads from data/filtered_jobs.json and data/cv_parsed.json.
+    Reads from data/filtered_jobs.json, data/cv_parsed.json, and data/emails.json.
+    Only processes jobs where email status is "valid" or "risky".
     Returns list of generated HTML paths.
     """
     filtered_path = Path("data/filtered_jobs.json")
@@ -397,20 +398,38 @@ async def personalize_all_filtered(force: bool = False) -> list:
         logger.error("data/cv_parsed.json not found - run step 1 first")
         return []
 
+    emails_path = Path("data/emails.json")
+    emails = {}
+    if emails_path.exists():
+        emails = json.loads(emails_path.read_text())
+
     cv_text = json.loads(cv_path.read_text()).get("text", "")
 
     from app.models import Job
     jobs_data = json.loads(filtered_path.read_text())
     jobs = [Job(**j) for j in jobs_data]
 
-    logger.info(f"📄 Generating personalized CVs for {len(jobs)} jobs...")
+    eligible = []
+    skipped_no_email = []
+    for job in jobs:
+        job_email = emails.get(job.id, {})
+        status = job_email.get("status", "")
+        if status in ("valid", "risky"):
+            eligible.append((job, job_email.get("email", "")))
+        else:
+            skipped_no_email.append(job)
+
+    if skipped_no_email:
+        logger.info(f"Skipping {len(skipped_no_email)} jobs without valid email: {[j.company for j in skipped_no_email]}")
+
+    logger.info(f"📄 Generating personalized CVs for {len(eligible)} jobs (with valid emails)...")
 
     html_paths = []
-    for i, job in enumerate(jobs):
+    for i, (job, to_email) in enumerate(eligible):
         try:
-            html_path = await personalize_cv(cv_text, job, force=force)
+            html_path = await personalize_cv(cv_text, job, force=force, to_email=to_email)
             html_paths.append(html_path)
-            logger.info(f"  Progress: {i+1}/{len(jobs)}")
+            logger.info(f"  Progress: {i+1}/{len(eligible)}")
         except Exception as e:
             logger.error(f"  Failed for {job.id}: {e}")
 

@@ -21,6 +21,9 @@ def load_config(config_path: str = "config.yaml") -> Config:
     if "apify" in raw and "api_token" in raw["apify"]:
         raw["apify"]["api_token"] = os.getenv("APIFY_API_KEY", raw["apify"].get("api_token", ""))
     
+    if "email_finder" in raw and "api_key" in raw["email_finder"]:
+        raw["email_finder"]["api_key"] = os.getenv("ANYMAILFINDER_API_KEY", raw["email_finder"].get("api_key", ""))
+    
     return Config(**raw)
 
 
