@@ -220,9 +220,44 @@ The pipeline needs your CV to work. By default it looks for `my_cv.pdf`, but you
      # path: "./cv.txt"    # Use this if your file is cv.txt
    ```
 
-**Important:** If you use PDF and get errors like "model does not support pdf input", switch to text format:
-- Export your CV as plain text or copy its contents into a `.txt` file
-- Change `path: "./my_cv.pdf"` to `path: "./cv.txt"` in config.yaml
+### ⚠️ PDF Not Working? Use TXT Instead
+
+If you get errors like "model does not support pdf input" or the text extraction returns empty/garbage, switch to text format.
+
+This is common when:
+- Your PDF is a **scanned image** (not text-based)
+- Your PDF is **password protected**
+- The PDF has **complex formatting** that doesn't extract well
+
+**Solution:**
+1. Open your CV in any text editor or Google Docs
+2. Copy all text content
+3. Paste into a new file named `cv.txt`
+4. Make sure it follows this structure:
+   ```
+   YOUR NAME
+   YOUR JOB TITLE
+   Location: ... Phone: ... Email: ... LinkedIn: ...
+   
+   About
+   Your professional summary here...
+   
+   Tech Stack
+   Frontend: ...
+   Backend: ...
+   
+   Experience
+   Job Title - Company
+   Date
+   - Achievement 1
+   - Achievement 2
+   
+   Education
+   Your degree details
+   ```
+5. Update config.yaml: `path: "./cv.txt"`
+
+**Tip:** An example CV format is in `cv.txt` in the project root - copy that structure for best results.
 
 ---
 
