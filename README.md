@@ -1,6 +1,6 @@
 # Email Application Automation
 
-AI-driven pipeline that automates the entire job application process: from discovering jobs to creating personalized CVs and Gmail drafts.
+AI-driven pipeline that automates the entire job application process. It searches LinkedIn for relevant jobs, filters them using AI, finds hiring manager emails, generates personalized CVs for each position, and creates ready-to-review Gmail drafts with personalized messages and your tailored CV attached - all you have to do is check and click send.
 
 ## 📊 Workflow Diagram
 
@@ -160,6 +160,26 @@ The pipeline uses OAuth2 to create Gmail drafts. This requires credentials from 
 1. Rename the downloaded file to `credentials.json`
 2. Place it in the project root directory (same level as `config.yaml`)
 3. The first time you run the pipeline, it will open a browser window for you to authorize
+
+---
+
+## 📄 Your CV File
+
+The pipeline needs your CV to work. By default it looks for `my_cv.pdf`, but you can use either PDF or TXT format.
+
+### To use your own CV:
+
+1. **Place your CV file in the project root** (next to `config.yaml`)
+2. **Update `config.yaml`** to point to your file:
+   ```yaml
+   cv:
+     path: "./my_cv.pdf"    # Use this if your file is my_cv.pdf
+     # path: "./cv.txt"    # Use this if your file is cv.txt
+   ```
+
+**Important:** If you use PDF and get errors like "model does not support pdf input", switch to text format:
+- Export your CV as plain text or copy its contents into a `.txt` file
+- Change `path: "./my_cv.pdf"` to `path: "./cv.txt"` in config.yaml
 
 ---
 
@@ -374,11 +394,22 @@ email-application-automation/
 
 ### Filter is too strict/lenient
 
+The filtering works in two stages:
+1. **Embedding filter** - Fast similarity matching, picks top N most relevant jobs
+2. **LLM filter** - AI evaluates each candidate in detail
+
 Adjust in `config.yaml`:
 ```yaml
 filter:
-  embedding_shortlist_size: 50   # Increase for more candidates
-  llm_fit_threshold: 20           # Lower for more lenient filtering
+  # How many jobs pass from embedding filter to LLM review
+  # Higher = more jobs reviewed, slower, but less likely to miss good matches
+  # Lower = faster, but might miss good jobs
+  embedding_shortlist_size: 50
+
+  # Minimum score (1-100) for LLM to consider a job relevant
+  # Higher = only best matches qualify
+  # Lower = more jobs qualify, less strict
+  llm_fit_threshold: 20
 ```
 
 ### Out of memory with LLM
