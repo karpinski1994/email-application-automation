@@ -2,69 +2,69 @@
 
 ## Conceptual Architecture
 
-**Pattern:** Deterministic Python Async Pipeline with Agentic Tools
+**Pattern:** Deterministic Python Async Pipeline with LLM-powered Tools
 
-The system follows a **deterministic orchestrator + agentic tools** pattern:
-- **Orchestrator:** Pure Python async pipeline (NOT an LLM agent) - controls flow, parallelism, error handling
-- **Tools:** Pydantic AI agents for cognitive tasks inside each step (filtering, CV generation, email discovery, cover letters)
+The system follows a **deterministic orchestrator + LLM-powered tools** pattern:
+- **Orchestrator:** Pure Python async pipeline - controls flow, parallelism, error handling, caching
+- **Tools:** Use LLM via direct API calls (Ollama httpx) for cognitive tasks inside each step
 
 This pattern is correct because:
 - Workflow is rigidly linear (Scrape → Filter → Personalize → Email → Draft) - no dynamic branching
 - Avoids cost/latency of LLM "what to do next" decisions
 - Avoids hallucination risks (LLM skipping steps)
-- Python controls the track; Pydantic AI handles the cognitive work on the track
+- Python controls the track; LLMs handle the cognitive work on the track
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │              Deterministic Python Orchestrator            │
 │                (agent.py - async pipeline)                 │
+│            Supports: --step N, --force, --dry-run         │
 └─────────────────────┬────────────────────────────────────┘
                       │
         ┌────────────▼────────────┐
-        │    Config Loader        │
-        │    (config.py)          │
+        │    Config Loader       │
+        │    (config.py)         │
         └────────┬───────────────┘
                  │
         ┌────────▼────────────┐
-        │    CV Parser       │
-        │ (cv_parser.py)    │
+        │    CV Parser         │
+        │ (tools/cv_parser.py) │  ← pdfplumber (PDF) or read_text (TXT)
         └────────┬─────────────┘
                  │
         ┌────────▼────────────┐
-        │    Scraper         │
-        │  (scraper.py)      │
-        │   (Apify API)     │
+        │    Scraper          │
+        │ (tools/scraper.py)  │  ← Apify API (async polling)
         └────────┬─────────────┘
                  │
         ┌────────▼────────────┐
-        │  Filter Agent      │
-        │  (Pydantic AI)     │
-        └────────┬─────────────┘
+        │  Filter (Two-Stage)  │
+        │ (tools/filter.py)   │  ← Stage1: nomic-embed-text (embedding)
+        └────────┬────────────┘        Stage2: llama3.2 (LLM scoring)
                  │
         ┌────────▼────────────┐
-        │ CV Personalizer    │
-        │  (Pydantic AI)    │
+        │  Email Finder       │
+        │ (tools/email_finder) │  ← AnyMailFinder API + web fallback
         └────────┬────────────┘
                  │
         ┌────────▼────────────┐
-        │  Email Finder     │
-        │  (Pydantic AI)   │
+        │  CV Personalizer    │
+        │(tools/cv_personalizer)│ ← Deterministic parse + LLM tailoring
+        └────────┬────────────┘   ← weasyprint HTML→PDF
+                 │
+        ┌────────▼────────────┐
+        │  Email Composer     │
+        │(tools/email_composer)│ ← Template-based (no LLM)
         └────────┬────────────┘
                  │
         ┌────────▼────────────┐
-        │ Cover Letter      │
-        │  (Pydantic AI)   │
-        └────────┬────────────┘
-                 │
-        ┌────────▼────────────┐
-        │  Gmail Draft      │
-        │ (gmail_draft.py)  │
-        └──────────────────┘
+        │  Gmail Draft       │
+        │(tools/gmail_draft) │  ← Gmail API OAuth2
+        └─────────────────────┘
 ```
 
 **Key Distinction:**
 - **Orchestrator (Python):** "I am at the filtering step, execute your logic" - deterministic
-- **Agentic Tool (Pydantic AI):** "Evaluate this CV + job, return structured decision" - cognitive
+- **LLM-powered Tool:** "Evaluate this CV + job, return structured decision" - cognitive via httpx
 ┌──────────────────────────────────────────────────────────────┐
 │                    Orchestrator Agent                     │
 │                   (Pydantic AI Agent)                    │
