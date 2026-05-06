@@ -20,24 +20,45 @@ def validate_prerequisites(step: int) -> None:
     Raises:
         FileNotFoundError: If required cache files from previous steps are missing
     """
-    prerequisites = {
-        2: [DATA_DIR / "cv_parsed.json"],
-        3: [DATA_DIR / "apify_results.json"],
-        4: [DATA_DIR / "filtered_jobs.json"],
-        5: [DATA_DIR / "filtered_jobs.json", DATA_DIR / "emails.json"],
-        6: [DATA_DIR / "filtered_jobs.json"],
+    prerequisite_hints = {
+        2: {"file": "cv_parsed.json", "step": 1, "desc": "Parse your CV"},
+        3: {"file": "apify_results.json", "step": 2, "desc": "Scrape jobs from LinkedIn"},
+        4: {"file": "filtered_jobs.json", "step": 3, "desc": "Filter jobs by CV match"},
+        5: {"file": "emails.json", "step": 4, "desc": "Find hiring manager emails"},
+        6: {"file": "emails.json", "step": 4, "desc": "Find hiring manager emails"},
     }
     
-    if step > 1 and step in prerequisites:
-        missing_files = []
-        for path in prerequisites[step]:
-            if not path.exists():
-                missing_files.append(path.name)
-        
-        if missing_files:
-            missing = ", ".join(missing_files)
+    # Special case: step 5 needs both filtered_jobs.json AND emails.json
+    if step == 5:
+        if not (DATA_DIR / "filtered_jobs.json").exists():
             raise FileNotFoundError(
-                f"Missing {missing}. Run --step {step - 1} first."
+                f"Missing data/filtered_jobs.json\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"Run step 3 first to filter jobs:\n"
+                f"  source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 3\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            )
+        if not (DATA_DIR / "emails.json").exists():
+            raise FileNotFoundError(
+                f"Missing data/emails.json\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"Run step 4 first to find emails:\n"
+                f"  source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 4\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            )
+        return
+    
+    if step > 1 and step in prerequisite_hints:
+        hint = prerequisite_hints[step]
+        required_file = DATA_DIR / hint["file"]
+        
+        if not required_file.exists():
+            raise FileNotFoundError(
+                f"Missing data/{hint['file']}\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"Run step {hint['step']} first ({hint['desc']}):\n"
+                f"  source .venv/bin/activate && PYTHONPATH=src python3 -m app --step {hint['step']}\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             )
 
 
