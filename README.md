@@ -197,7 +197,7 @@ The pipeline uses OAuth2 to create Gmail drafts. This requires credentials from 
 
 1. Go to [https://console.cloud.google.com/auth/scopes](https://console.cloud.google.com/auth/scopes)
 2. Click **Add or remove scopes**
-3. Check: `.../auth/gmail.compose` (See your emails and compose/send emails from your mailbox)
+3. Check: `https://www.googleapis.com/auth/gmail.compose` (See your emails and compose/send emails from your mailbox)
 
 #### 5. Create OAuth Credentials
 
