@@ -12,7 +12,7 @@ def main():
     parser = argparse.ArgumentParser(description="Email Application Automation")
     parser.add_argument("command", nargs="?", default="run", help="Command to run")
     parser.add_argument("--force", "-f", action="store_true", help="Force re-run, ignore cache")
-    parser.add_argument("--step", "-s", type=int, default=1, help="Start from step N (1=parse CV, 2=scrape, 3=filter, 4=find emails, 5=personalize CVs, 6=create Gmail drafts)")
+    parser.add_argument("--step", "-s", type=int, default=None, help="Run specific step only (1=parse CV, 2=scrape, 3=filter, 4=find emails, 5=personalize CVs, 6=create Gmail drafts)")
     parser.add_argument("--dry-run", action="store_true", help="Dry run, don't call external APIs")
     parser.add_argument("--filter-only", action="store_true", help="Stop after filtering (step 3)")
     parser.add_argument("--count", "-c", type=int, default=50, help="Max jobs to process")
@@ -20,6 +20,13 @@ def main():
     parser.add_argument("--config", default="config.yaml", help="Config file path")
     
     args = parser.parse_args()
+    
+    # Track if user explicitly specified a step
+    explicit_step = args.step is not None
+    
+    # Default to running full pipeline (None means run all steps)
+    if args.step is None:
+        args.step = 1
     
     if args.command == "run":
         try:
@@ -36,18 +43,20 @@ def main():
             
             summary = asyncio.run(run(config, force=args.force, step=args.step, dry_run=args.dry_run, filter_only=args.filter_only))
             
-            print()
-            print("=" * 50)
-            print("RUN COMPLETE")
-            print("=" * 50)
-            print(f"Jobs found: {summary.jobs_found}")
-            print(f"Jobs filtered: {summary.jobs_filtered}")
-            print(f"Jobs qualified: {summary.jobs_qualified}")
-            print(f"Drafts created: {summary.drafts_created}")
-            if summary.errors:
-                print(f"Errors: {len(summary.errors)}")
-                for e in summary.errors[:5]:
-                    print(f"  - {e}")
+            # Show RUN COMPLETE summary only for full pipeline (not explicit single step)
+            if not explicit_step:
+                print()
+                print("=" * 50)
+                print("RUN COMPLETE")
+                print("=" * 50)
+                print(f"Jobs found: {summary.jobs_found}")
+                print(f"Jobs filtered: {summary.jobs_filtered}")
+                print(f"Jobs qualified: {summary.jobs_qualified}")
+                print(f"Drafts created: {summary.drafts_created}")
+                if summary.errors:
+                    print(f"Errors: {len(summary.errors)}")
+                    for e in summary.errors[:5]:
+                        print(f"  - {e}")
             
         except FileNotFoundError as e:
             print(f"Error: {e}")
