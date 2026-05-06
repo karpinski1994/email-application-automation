@@ -324,6 +324,9 @@ Runs all steps sequentially: Parse CV → Scrape Jobs → Filter Jobs → Find E
 # Dry run (skip external API calls)
 source .venv/bin/activate && PYTHONPATH=src python3 -m app --dry-run
 
+# Use cached data (skip completed steps, resume from where left off)
+source .venv/bin/activate && PYTHONPATH=src python3 -m app --cached
+
 # Force re-run (ignore cache and redo everything)
 source .venv/bin/activate && PYTHONPATH=src python3 -m app --force
 
