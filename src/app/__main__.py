@@ -15,7 +15,7 @@ def main():
     parser.add_argument("--step", "-s", type=int, default=None, help="Run specific step only (1=parse CV, 2=scrape, 3=filter, 4=find emails, 5=personalize CVs, 6=create Gmail drafts)")
     parser.add_argument("--dry-run", action="store_true", help="Dry run, don't call external APIs")
     parser.add_argument("--filter-only", action="store_true", help="Stop after filtering (step 3)")
-    parser.add_argument("--count", "-c", type=int, default=50, help="Max jobs to process")
+    parser.add_argument("--count", "-c", type=int, default=None, help="Max jobs to process (default: from config.yaml)")
     parser.add_argument("--limit", "-l", type=int, default=None, help="Limit jobs for testing (overrides count)")
     parser.add_argument("--config", default="config.yaml", help="Config file path")
     
@@ -31,7 +31,9 @@ def main():
     if args.command == "run":
         try:
             config = load_config(args.config)
-            config.search.count = args.count
+            # Only override count if explicitly specified via CLI
+            if args.count is not None:
+                config.search.count = args.count
             config.dry_run = args.dry_run
             
             print(f"Starting Email Application Automation...")

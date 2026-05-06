@@ -279,8 +279,10 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
             
             valid_count = sum(1 for v in emails.values() if v.get("status") == "valid")
             risky_count = sum(1 for v in emails.values() if v.get("status") == "risky")
+            fallback_verified_count = sum(1 for v in emails.values() if v.get("status") == "fallback_verified")
+            fallback_inferred_count = sum(1 for v in emails.values() if v.get("status") == "fallback_inferred")
             not_found_count = sum(1 for v in emails.values() if v.get("status") in ("not_found", "error"))
-            print(f"Step 4: Found {valid_count}/{len(emails)} emails ({valid_count} valid, {risky_count} risky, {not_found_count} not found)")
+            print(f"Step 4: Found {valid_count}/{len(emails)} emails ({valid_count} valid, {risky_count} risky, {fallback_verified_count} fallback verified, {fallback_inferred_count} fallback inferred, {not_found_count} not found)")
         else:
             print("Step 4: No qualifying jobs to find emails for")
         
@@ -291,7 +293,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
             print("STEP 4 COMPLETE: Emails Found")
             print("=" * 50)
             print(f"Jobs processed: {len(qualifying)}")
-            print(f"Valid emails: {valid_count}, Risky: {risky_count}, Not found: {not_found_count}")
+            print(f"Valid: {valid_count}, Risky: {risky_count}, Fallback verified: {fallback_verified_count}, Fallback inferred: {fallback_inferred_count}, Not found: {not_found_count}")
             print(f"Output: data/emails.json")
             print()
             print("Next: Run --step 5 to personalize CVs")
@@ -328,7 +330,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
             print("STEP 5 COMPLETE: CVs Personalized")
             print("=" * 50)
             print(f"CVs generated: {len(pdf_paths)}")
-            print(f"Output: data/cvs/{job_id}/personalized_cv.pdf")
+            print(f"Output: data/cvs/ (one folder per job)")
             print()
             print("Next: Run --step 6 to create Gmail drafts")
             return RunSummary(

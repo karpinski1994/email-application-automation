@@ -8,7 +8,7 @@ search:
     - "https://www.linkedin.com/jobs/search/?keywords=front-end%20developer&location=Latin%20America"
     - "https://www.linkedin.com/jobs/search/?keywords=frontend%20developer%20remote&location=Latin%20America"
     - "https://www.linkedin.com/jobs/search/?keywords=frontend%20developer&f_WT=2"
-  count: 100
+  count: 10
 
 # CV file path (relative to project root)
 cv:
