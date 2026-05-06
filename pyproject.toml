@@ -20,6 +20,7 @@ dependencies = [
     "weasyprint",
     "tenacity",
     "ddgs>=7.0",
+    "jinja2",
     # Note: sentence-transformers is NOT required.
     # We use Ollama's native embedding API (nomic-embed-text) via HTTP.
 ]
