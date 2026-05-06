@@ -62,7 +62,7 @@ def validate_prerequisites(step: int) -> None:
             )
 
 
-async def run(config, force=False, step=1, dry_run=False, filter_only=False, explicit_step=False):
+async def run(config, force=False, step=1, dry_run=False, filter_only=False, explicit_step=False, include_applied=False):
     """Run the email application automation pipeline.
     
     Args:
@@ -72,6 +72,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False, exp
         dry_run: Don't call external APIs
         filter_only: Stop after filtering (step 3)
         explicit_step: If True, run only the specified step and stop
+        include_applied: If True, process jobs that were already applied to
     
     Returns:
         RunSummary with statistics
@@ -94,6 +95,17 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False, exp
     validate_prerequisites(step)
     started_at = datetime.now().isoformat()
     errors = []
+    
+    # Show applied jobs count (with safety wraps)
+    if not include_applied:
+        try:
+            from app.tools.applied_tracker import AppliedTracker
+            tracker = AppliedTracker()
+            applied_count = tracker.get_applied_count()
+            if applied_count > 0:
+                print(f"📋 {applied_count} jobs already applied (will be skipped)")
+        except Exception:
+            pass  # Fail silently if tracker fails
     
     # Step 1: Parse CV (always ensure cv_text is available)
     cv_path = DATA_DIR / "cv_parsed.json"
@@ -198,6 +210,22 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False, exp
     
     # Step 3: Filter Jobs
     if step <= 3:
+        # Filter out already-applied jobs (with safety wraps)
+        if not include_applied:
+            tracker = None
+            try:
+                from app.tools.applied_tracker import AppliedTracker
+                tracker = AppliedTracker()
+            except Exception:
+                tracker = None  # Fail gracefully if tracker fails
+            
+            if tracker:
+                original_count = len(jobs)
+                jobs = [j for j in jobs if not tracker.is_applied(j.id)]
+                skipped_count = original_count - len(jobs)
+                if skipped_count > 0:
+                    print(f"⏭️  Skipping {skipped_count} already-applied jobs")
+        
         filtered_path = DATA_DIR / "filtered_jobs.json"
         if force or not is_cached(filtered_path):
             # Determine LLM config based on provider
@@ -378,6 +406,24 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False, exp
                         )
                     else:
                         draft_id = f"dry_run_{i}"
+
+                    # Mark job as applied (with safety wraps)
+                    if not dry_run:
+                        tracker = None
+                        try:
+                            from app.tools.applied_tracker import AppliedTracker
+                            tracker = AppliedTracker()
+                        except Exception:
+                            tracker = None
+                        
+                        if tracker:
+                            tracker.mark_applied(
+                                job_id=job.id,
+                                company=job.company,
+                                draft_id=draft_id if draft_id and not draft_id.startswith("error:") else None,
+                                subject=email_data.get("subject", ""),
+                                to=email_data.get("to", "")
+                            )
 
                     drafts_created += 1
                     print(f"  Job {i+1}/{len(qualifying)}: Created draft for {job.company}")
