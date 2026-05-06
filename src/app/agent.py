@@ -62,7 +62,7 @@ def validate_prerequisites(step: int) -> None:
             )
 
 
-async def run(config, force=False, step=1, dry_run=False, filter_only=False):
+async def run(config, force=False, step=1, dry_run=False, filter_only=False, explicit_step=False):
     """Run the email application automation pipeline.
     
     Args:
@@ -71,6 +71,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
         step: Start from step N (1-7)
         dry_run: Don't call external APIs
         filter_only: Stop after filtering (step 3)
+        explicit_step: If True, run only the specified step and stop
     
     Returns:
         RunSummary with statistics
@@ -108,7 +109,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
             cv_text = load_json(cv_path).get("text", "")
         print(f"Step 1: CV parsed ({len(cv_text)} chars)")
         
-        if step == 1:
+        if step == 1 and explicit_step:
             finished_at = datetime.now().isoformat()
             print()
             print("=" * 50)
@@ -143,7 +144,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
             jobs = _load_jobs_from_apify_cache(jobs_path)
             print(f"Step 2: Loaded {len(jobs)} jobs from cache (skipping Apify call)")
             
-            if step == 2:
+            if step == 2 and explicit_step:
                 finished_at = datetime.now().isoformat()
                 print()
                 print("=" * 50)
@@ -167,7 +168,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
             save_json(jobs_path, [j.model_dump() for j in jobs])
             print(f"Step 2: Scraped {len(jobs)} jobs")
         
-        if step == 2:
+        if step == 2 and explicit_step:
             finished_at = datetime.now().isoformat()
             print()
             print("=" * 50)
@@ -222,7 +223,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
             qualifying = [Job(**j) for j in qualifying_data]
         print(f"Step 3: {len(qualifying)} jobs qualified")
         
-        if step == 3:
+        if step == 3 and explicit_step:
             finished_at = datetime.now().isoformat()
             print()
             print("=" * 50)
@@ -286,7 +287,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
         else:
             print("Step 4: No qualifying jobs to find emails for")
         
-        if step == 4:
+        if step == 4 and explicit_step:
             finished_at = datetime.now().isoformat()
             print()
             print("=" * 50)
@@ -323,7 +324,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
         else:
             print("Step 5: No qualifying jobs to personalize CVs for")
         
-        if step == 5:
+        if step == 5 and explicit_step:
             finished_at = datetime.now().isoformat()
             print()
             print("=" * 50)
@@ -386,7 +387,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
 
             print(f"Step 6: {drafts_created} Gmail drafts created")
         
-            if step == 6:
+            if step == 6 and explicit_step:
                 finished_at = datetime.now().isoformat()
                 print()
                 print("=" * 50)

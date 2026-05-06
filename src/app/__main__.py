@@ -43,7 +43,7 @@ def main():
             print(f"Step: {args.step}")
             print()
             
-            summary = asyncio.run(run(config, force=args.force, step=args.step, dry_run=args.dry_run, filter_only=args.filter_only))
+            summary = asyncio.run(run(config, force=args.force, step=args.step, dry_run=args.dry_run, filter_only=args.filter_only, explicit_step=explicit_step))
             
             # Show RUN COMPLETE summary only for full pipeline (not explicit single step)
             if not explicit_step:

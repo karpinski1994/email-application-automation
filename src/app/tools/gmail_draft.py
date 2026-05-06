@@ -76,16 +76,31 @@ async def create_draft(
         credentials_path: Path to OAuth credentials JSON
 
     Returns:
-        Draft ID
+        Draft ID (or error message starting with "error:")
     """
     try:
-        from googleapiclient.discovery import build
-
+        # Step 1: Load credentials
         creds = _load_credentials(credentials_path)
+        if creds is None:
+            raise ValueError(
+                "Credentials loading failed - _load_credentials returned None. "
+                "Verify that credentials.json exists in project root and contains valid OAuth client credentials. "
+                "Troubleshooting: Delete data/gmail_token.json to force re-authentication."
+            )
+        
+        # Step 2: Build Gmail service
+        from googleapiclient.discovery import build
         service = build('gmail', 'v1', credentials=creds)
-
+        if service is None:
+            raise RuntimeError(
+                "Failed to build Gmail service - googleapiclient.discovery.build() returned None. "
+                "This may indicate invalid credentials or API configuration issues."
+            )
+        
+        # Step 3: Create MIME message
         raw_message = _create_mime_message(to, subject, body, attachment_path)
 
+        # Step 4: Call Gmail API to create draft
         draft = {
             'message': {
                 'raw': raw_message
@@ -96,6 +111,12 @@ async def create_draft(
             userId='me',
             body=draft
         ).execute()
+
+        if result is None:
+            raise RuntimeError(
+                "Gmail API returned None when creating draft. "
+                "Check if Gmail API is enabled in Google Cloud Console and credentials have 'gmail.compose' scope."
+            )
 
         draft_id = result.get('id')
         logger.info(f"Created Gmail draft: {draft_id}")
@@ -110,9 +131,24 @@ async def create_draft(
 
         return draft_id
 
+    except ValueError as e:
+        logger.error(f"Configuration error: {e}")
+        return f"error: {e}"
+    except RuntimeError as e:
+        logger.error(f"Runtime error: {e}")
+        return f"error: {e}"
+    except FileNotFoundError as e:
+        logger.error(f"File not found error: {e}. Ensure credentials.json exists in project root.")
+        return f"error: File not found - {e}"
     except Exception as e:
-        logger.error(f"Failed to create Gmail draft: {e}")
-        return f"error: {str(e)}"
+        error_type = type(e).__name__
+        logger.error(f"Failed to create Gmail draft ({error_type}): {e}")
+        logger.error("Troubleshooting steps:")
+        logger.error("  1. Delete data/gmail_token.json to force re-authentication")
+        logger.error("  2. Verify credentials.json exists in project root")
+        logger.error("  3. Check Gmail API is enabled in Google Cloud Console")
+        logger.error("  4. Ensure OAuth consent screen has your email as test user")
+        return f"error: {error_type}: {e}"
 
 
 async def create_draft_mock(
