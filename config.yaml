@@ -51,6 +51,7 @@ email_finder:
   categories:
     - "engineering"
     - "hr"
+    - "it"
   max_domain_attempts: 3
   fallback_enabled: true
   fallback_max_attempts: 3
