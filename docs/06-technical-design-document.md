@@ -1,71 +1,115 @@
 # Technical Design Document – AI Automated Email Job Application System
 
-## Directory Structure
+## 1. Overview
+
+The Email Application Automation system is a deterministic Python async pipeline that automates the job application process. It uses local LLMs (Ollama) for cognitive tasks, reducing costs and maintaining privacy.
+
+**Core Pattern:** Deterministic orchestrator + LLM-powered tools
+
+- **Orchestrator:** Pure Python async pipeline - controls flow, parallelism, error handling, caching
+- **Tools:** Use LLM via direct API calls for cognitive tasks inside each step
+
+This pattern ensures:
+- Rigidly linear workflow (no dynamic branching decisions)
+- No cost/latency of LLM "what to do next" decisions
+- No hallucination risks (LLM skipping steps)
+
+## 2. Directory Structure
 
 ```
 email-application-automation/
 ├── src/
 │   └── app/
 │       ├── __init__.py
-│       ├── __main__.py          # Entry point: python -m app run
-│       ├── config.py            # Config loading & validation
-│       ├── models.py           # Pydantic models
-│       ├── cv_parser.py        # PDF/TXT CV parsing
-│       ├── scraper.py          # Apify integration
-│       ├── filter.py           # Job filtering (LLM-based, structured output)
-│       ├── cv_personalizer.py # CV personalization with PDF generation
-│       ├── email_finder.py    # AnyMailFinder integration
-│       ├── cover_letter.py   # Cover letter generation
-│       ├── gmail_draft.py   # Gmail API integration
-│       ├── agent.py          # Orchestrator with parallel processing
-│       └── utils.py          # Shared utilities (save_json, etc.)
-├── config.yaml
-├── data/                    # Generated at runtime
-├── credentials.json        # Gmail OAuth (gitignored)
-├── tests/
-│   └── test_filter.py
-└── pyproject.toml
+│       ├── __main__.py          # Entry point: python -m app
+│       ├── config.py            # Config loading from YAML + .env
+│       ├── agent.py             # Pipeline orchestrator (async)
+│       ├── models.py            # Pydantic data models
+│       ├── utils.py             # Shared utilities
+│       │
+│       └── tools/               # Pipeline step implementations
+│           ├── cv_parser.py         # PDF/TXT CV parsing (pdfplumber)
+│           ├── scraper.py          # Apify LinkedIn job scraping (async polling)
+│           ├── filter.py             # Two-stage job filtering (embedding + LLM)
+│           ├── email_finder.py      # AnyMailFinder API with web fallback
+│           ├── web_email_finder.py # Web search fallback for emails
+│           ├── cv_personalizer.py  # CV personalization with PDF generation
+│           ├── email_composer.py   # Email subject/body generation
+│           ├── cover_letter.py    # (legacy - now in email_composer)
+│           ├── gmail_draft.py    # Gmail API integration (OAuth2)
+│           └── applied_tracker.py # Track applied jobs to avoid duplicates
+│       │
+│       └── templates/
+│           └── cv_template.html   # Jinja2 CV HTML template
+│
+├── data/                   # Generated at runtime (gitignored)
+├── config.yaml             # Main configuration
+├── config.example.yaml     # Example configuration
+├── .env                    # API keys (gitignored)
+├── pyproject.toml
+└── README.md
 ```
 
-## Class/Object Design
+## 3. Data Models
 
-### Config Model
+### 3.1 Configuration Models (`models.py`)
 
 ```python
 from pydantic import BaseModel, Field
 from typing import Optional
 
-class LLMConfig(BaseModel):
-    provider: str = "local"  # "local" (Ollama) or "openai"
-    model: str = "qwen2.5:7b"  # Default local model
-    base_url: str = "http://localhost:11434/v1"  # Ollama OpenAI-compatible endpoint
-    api_key: str = "ollama"  # Dummy for local, real key for OpenAI
-
 class SearchConfig(BaseModel):
-    urls: list[str] = Field(min_length=1)
-    count: int = Field(default=50, ge=1, le=50)
+    urls: list[str] = Field(min_length=1, description="List of job search URLs")
+    count: int = Field(default=100, ge=1, le=200, description="Max jobs to process")
 
 class CVConfig(BaseModel):
-    path: str
+    path: str = Field(description="Path to CV file (PDF or TXT)")
 
 class GmailConfig(BaseModel):
     draft_only: bool = True
     token_path: str = "data/gmail_token.json"
     credentials_path: str = "credentials.json"
 
+class LLMConfig(BaseModel):
+    provider: str = "local"  # "local" (Ollama) or "openai"
+    model: str = "qwen2.5:7b"
+    base_url: str = "http://localhost:11434/v1"
+    api_key: str = "ollama"
+
+class ApifyConfig(BaseModel):
+    api_token: str = ""
+    actor_id: str = "apify/linkedin-jobs-scraper"
+
+class FilterConfig(BaseModel):
+    embedding_shortlist_size: int = 20
+    llm_fit_threshold: int = 70
+    embedding_model: str = "nomic-embed-text"
+    scoring_model: str = "llama3.2"
+
+class EmailFinderConfig(BaseModel):
+    provider: str = "anymailfinder"
+    api_key: str = ""
+    categories: list[str] = Field(default_factory=lambda: ["engineering", "hr"])
+    max_domain_attempts: int = 3
+    fallback_enabled: bool = True
+    fallback_max_attempts: int = 3
+
 class PrivacyConfig(BaseModel):
-    redact_pii: bool = True  # Redact PII before sending to LLM
+    redact_pii: bool = True
 
 class Config(BaseModel):
     search: SearchConfig
     cv: CVConfig
     gmail: GmailConfig
     llm: LLMConfig = Field(default_factory=LLMConfig)
+    apify: ApifyConfig = Field(default_factory=ApifyConfig)
+    filter: FilterConfig = Field(default_factory=FilterConfig)
+    email_finder: EmailFinderConfig = Field(default_factory=EmailFinderConfig)
     privacy: PrivacyConfig = Field(default_factory=PrivacyConfig)
-    dry_run: bool = False  # Skip actual Gmail draft creation
+    dry_run: bool = False
 ```
 
-### Job Model (Unified)
+### 3.2 Job Model
 
 ```python
 class Job(BaseModel):
@@ -76,19 +120,31 @@ class Job(BaseModel):
     url: str
     location: Optional[str] = None
     hiring_manager_name: Optional[str] = None
-    requirements: list[str] = Field(default_factory=list)  # Added from LLD
+    requirements: list[str] = Field(default_factory=list)
     posted_date: Optional[str] = None
-    accepting_applications: Optional[bool] = None  # May be unknown (None)
-    rejection_reason: Optional[str] = None  # Populated after filtering
+    accepting_applications: Optional[bool] = None
+    rejection_reason: Optional[str] = None
+    # Additional fields from Apify
+    remote_allowed: Optional[bool] = None
+    employment_type: Optional[str] = None
+    seniority_level: Optional[str] = None
+    company_website: Optional[str] = None
 ```
 
-### RunSummary Model
+### 3.3 Filter Decision Model
 
 ```python
-from datetime import datetime
+class FilterDecision(BaseModel):
+    is_qualified: bool
+    is_accepting_applications: bool
+    reason: Optional[str] = None
+```
 
+### 3.4 Run Summary Model
+
+```python
 class RunSummary(BaseModel):
-    started_at: str  # ISO8601 string for JSON serialization
+    started_at: str
     finished_at: str
     jobs_found: int
     jobs_filtered: int
@@ -97,305 +153,123 @@ class RunSummary(BaseModel):
     errors: list[str]
 ```
 
-### FilterResult Model (Structured LLM Output)
+## 4. Pipeline Steps
 
-```python
-from pydantic import BaseModel
-from typing import Optional
+The pipeline consists of 6 sequential steps:
 
-class FilterDecision(BaseModel):
-    is_qualified: bool
-    is_accepting_applications: bool
-    reason: Optional[str] = None
-```
+| Step | Component | Description |
+|------|----------|------------|
+| 1 | CV Parser | Parse PDF/TXT CV into text |
+| 2 | Scraper | Scrape jobs via Apify |
+| 3 | Filter | Two-stage filtering (embedding + LLM) |
+| 4 | Email Finder | Find hiring manager emails |
+| 5 | CV Personalizer | Generate personalized CV PDFs |
+| 6 | Gmail Draft | Create Gmail drafts |
 
-### Local LLM Integration
+### 4.1 Step 1: CV Parser (`tools/cv_parser.py`)
 
-```python
-# utils.py
-def get_llm_client() -> OpenAI:
-    """Get LLM client (local Ollama or OpenAI)"""
-    config = load_config()
-    
-    if config.llm.provider == "local":
-        return OpenAI(
-            base_url=config.llm.base_url,
-            api_key=config.llm.api_key  # "ollama"
-        )
-    else:
-        return OpenAI()  # Uses OPENAI_API_KEY env var
-```
+Parses CV files (PDF or TXT) into text content.
 
-### Gmail OAuth Flow
+- **Input:** CV file path (PDF or TXT)
+- **Output:** Raw CV text
+- **Library:** pdfplumber for PDF, built-in for TXT
 
-```python
-# gmail_draft.py
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
+### 4.2 Step 2: Scraper (`tools/scraper.py`)
 
-GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.draft"]
+Scrapes jobs from LinkedIn using Apify.
 
-def get_gmail_credentials() -> Credentials:
-    """Load or refresh Gmail OAuth credentials"""
-    token_path = Path(config.gmail.token_path)
-    creds_path = Path(config.gmail.credentials_path)
-    
-    if token_path.exists():
-        creds = Credentials.from_authorized_user_file(str(token_path), GMAIL_SCOPES)
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-            with open(token_path, "w") as f:
-                f.write(creds.to_json())
-        return creds
-    
-    # First run: browser OAuth flow
-    flow = InstalledAppFlow.from_client_secrets_file(
-        str(creds_path), GMAIL_SCOPES
-    )
-    creds = flow.run_local_server(port=0)
-    token_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(token_path, "w") as f:
-        f.write(creds.to_json())
-    return creds
-```
+- **Input:** Job search URLs
+- **Output:** List of Job objects
+- **Library:** httpx (async)
+- **Features:** Async polling with status check
 
-### Job Deduplication
+### 4.3 Step 3: Filter (`tools/filter.py`)
 
-```python
-# utils.py
-def get_processed_job_ids() -> set[str]:
-    """Get set of already processed job IDs"""
-    path = Path("data/processed_jobs.json")
-    if path.exists():
-        return {entry["job_id"] for entry in json.loads(path.read_text())}
-    return set()
+Two-stage job filtering:
+1. **Stage 1:** Embedding-based pre-filtering (nomic-embed-text)
+2. **Stage 2:** LLM detailed scoring (llama3.2)
 
-def mark_job_processed(job_id: str, draft_id: str) -> None:
-    """Record processed job with draft ID"""
-    path = Path("data/processed_jobs.json")
-    data = []
-    if path.exists():
-        data = json.loads(path.read_text())
-    data.append({"job_id": job_id, "draft_id": draft_id, "processed_at": datetime.now().isoformat()})
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2))
-```
+- **Input:** Jobs + CV text
+- **Output:** Tuple of (qualifying_jobs, rejected_jobs)
+- **Features:** Threshold-based filtering, pre-filters jobs without company website
 
-### Parallel Processing with Asyncio
+### 4.4 Step 4: Email Finder (`tools/email_finder.py`)
 
-```python
-# agent.py
-import asyncio
+Finds hiring manager emails via AnyMailFinder API with web fallback.
 
-async def run(config: Config) -> RunSummary:
-    started_at = datetime.now().isoformat()
-    processed_ids = get_processed_job_ids()
-    
-    # Phase 1: Sequential (depends on previous output)
-    cv_text = parse_cv(config.cv.path)
-    jobs = scrape_jobs(config.search.urls, config)
-    qualifying, rejected = await filter_jobs(jobs, cv_text)
-    
-    # Phase 2: Parallel per-job processing
-    new_jobs = [j for j in qualifying if j.id not in processed_ids]
-    
-    semaphore = asyncio.Semaphore(5)  # Max 5 concurrent
-    
-    async def process_job(job: Job) -> Optional[str]:
-        async with semaphore:
-            try:
-                # Validate email before proceeding
-                email = await find_email(job.company, job.hiring_manager_name)
-                if not email or "@" not in email:
-                    return f"{job.id}: No valid email found"
-                
-                cv_path = await personalize_cv(cv_text, job)
-                letter = await generate_cover_letter(job, cv_text)
-                draft_id = await create_draft(email, job.title, letter, cv_path, get_gmail_credentials())
-                mark_job_processed(job.id, draft_id)
-                return None
-            except Exception as e:
-                return f"{job.id}: {str(e)}"
-    
-    results = await asyncio.gather(*[process_job(j) for j in new_jobs[:config.search.count]])
-    errors = [r for r in results if r is not None]
-    
-    return RunSummary(
-        started_at=started_at,
-        finished_at=datetime.now().isoformat(),
-        jobs_found=len(jobs),
-        jobs_filtered=len(rejected),
-        jobs_qualified=len(qualifying),
-        drafts_created=len(qualifying) - len(errors),
-        errors=errors
-    )
-```
+- **Input:** Company name / domain
+- **Output:** Email address with status
+- **Features:** API + web search fallback
 
-### Error Handling with Tenacity
+### 4.5 Step 5: CV Personalizer (`tools/cv_personalizer.py`)
 
-```python
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from httpx import HTTPStatusError
+Generates personalized CV PDFs for each job.
 
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type(HTTPStatusError)
-)
-def find_email(company: str, hiring_manager: Optional[str] = None) -> str:
-    """Find email with automatic retry on rate limit"""
-    # ... implementation
-```
+- **Input:** Base CV + Job
+- **Output:** PDF file path
+- **Features:** Jinja2 template + weasyprint HTML→PDF
 
-### Progress Reporting
+### 4.6 Step 6: Gmail Draft (`tools/gmail_draft.py`)
 
-```python
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+Creates Gmail drafts with PDF attachments.
 
-async def run(config: Config) -> RunSummary:
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TaskProgressColumn(),
-    ) as progress:
-        # ... pipeline with progress updates
-```
+- **Input:** To, subject, body, PDF attachment
+- **Output:** Draft ID
+- **Features:** OAuth2 + Gmail API
 
-## Design Patterns
-
-| Pattern | Usage |
-|---------|-------|
-| **Sequential Pipeline** | Main orchestrator runs steps in order, not LLM-routed |
-| **Tool-as-Function** | Each module is a pure function, not a class |
-| **Try/Except + Tenacity** | Retries with exponential backoff for API calls |
-| **Singleton Config** | One Config instance passed through pipeline |
-
-## Database Schema
-
-### Local JSON files (no database)
-
-```python
-# data/apify_results.json
-[
-  {"id": "...", "title": "...", "company": "...", "description": "...", "url": "...", "location": "..."}
-]
-
-# data/filtered_jobs.json
-[Job, ...]
-
-# data/filtered_out_jobs.json
-[Job, ...]
-
-# data/run_summary.json
-{"started_at": "...", "finished_at": "...", "jobs_found": 50, "jobs_filtered": 30, "jobs_qualified": 20, "drafts_created": 18, "errors": []}
-```
-
-## API Endpoint Specifications
-
-### Apify
+## 5. Data Flow
 
 ```
-POST https://api.apify.com/v2/acts/{actor_id}/run-sync-get-dataset-items
-Headers:
-  Authorization: Bearer {APIFY_API_KEY}
-  Accept: application/json
-  Content-Type: application/json
-Body:
-{
-  "count": 100,
-  "scrapeCompany": true,
-  "splitByLocation": false,
-  "urls": ["https://www.linkedin.com/jobs/search/?..."]
-}
-Response: [{"id": "...", "title": "...", "company": "...", "description": "...", "url": "...", "location": "..."}, ...]
+User runs: python -m app
+
+1. load_config() → Config object
+2. parse_cv() → CV text (Step 1)
+3. scrape_jobs() → list[Job] (Step 2)
+4. filter_jobs() → (qualifying, rejected) (Step 3)
+5. For each qualifying job:
+   a. find_email() → email (Step 4)
+   b. personalize_cv() → PDF (Step 5)
+   c. compose_email() → email body (Step 5)
+   d. create_draft() → draft ID (Step 6)
+6. save run_summary.json
 ```
 
-**Notes:**
-- `actor_id` is `hKByXkMQaC5Qt9UMN` (LinkedIn jobs scraper)
-- `count` is the number of jobs to retrieve (1-100)
-- `scrapeCompany` when true includes company data in results
-- `splitByLocation` when false returns combined results
-- `urls` is a dynamic list of LinkedIn job search URLs
+## 6. CLI Interface
 
-### AnyMailFinder
+```bash
+# Run full pipeline
+python -m app run
 
-Two modes:
-1. **With hiring manager name** (preferred):
-```
-POST https://anymailfinder.io/v4/guess/generate
-Headers: Authorization: Bearer {ANYMAILFINDER_API_KEY}
-Body: {"company": "...", "full_name": "..."}
-Response: {"email": "..."}
-```
-2. **Company-wide search** (fallback when name not available):
-```
-POST https://anymailfinder.io/v4/company/search
-Headers: Authorization: Bearer {ANYMAILFINDER_API_KEY}
-Body: {"company": "..."}
-Response: {"emails": [{"email": "...", "role": "...", "confidence": 0.9}]}
-```
+# Run specific step
+python -m app run --step 3
 
-If `job.hiring_manager_name` is missing, use company-wide search and pick the highest-confidence email.
+# Force re-run (ignore cache)
+python -m app run --force
 
-### Gmail
+# Dry run (no external APIs)
+python -m app run --dry-run
 
-**MIME multipart construction required:**
+# Use cached jobs only
+python -m app run --cached
 
-```python
-import email.mime.multipart
-import email.mime.base
-import base64
+# Include already applied jobs
+python -m app run --include-applied
 
-def create_draft_mime(to: str, subject: str, body: str, attachment_path: pathlib.Path) -> str:
-    # Create MIME multipart message
-    msg = email.mime.multipart.MIMEMultipart('mixed')
-    msg['To'] = to
-    msg['Subject'] = subject
-    
-    # Add body
-    body_part = email.mime.text.MIMEText(body, 'plain')
-    msg.attach(body_part)
-    
-    # Attach PDF
-    with open(attachment_path, 'rb') as f:
-        attachment = email.mime.base.MIMEBase('application', 'pdf')
-        attachment.set_payload(f.read())
-    encoders.encode_base64(attachment)
-    attachment.add_header('Content-Disposition', 'attachment', filename=attachment_path.name)
-    msg.attach(attachment)
-    
-    # Return base64 encoded raw MIME
-    return base64.urlsafe_b64encode(msg.as_bytes()).decode('utf-8')
+# Stop after filtering
+python -m app run --filter-only
+
+# Limit jobs
+python -m app run --limit 10
 ```
 
-API call:
-```
-POST https://gmail.googleapis.com/gmail/v1/users/me/drafts
-Headers: Authorization: Bearer {access_token}
-Body: {"message": {"raw": "base64_mime_string"}}
-Response: {"id": "...", "threadId": "..."}
-```
+## 7. Configuration
 
-### OpenAI (LLM)
-
-```
-POST https://api.openai.com/v1/chat/completions
-Headers: Authorization: Bearer {OPENAI_API_KEY}
-Body: {"model": "gpt-4o", "messages": [{"role": "user", "content": "..."}]}
-Response: {"choices": [{"message": {"content": "..."}}]}
-```
-
----
-
-### Example `config.yaml`
+### 7.1 Config File (`config.yaml`)
 
 ```yaml
 search:
   urls:
-    - "https://www.linkedin.com/jobs/search-results/?keywords=front-end%20developer%20latam&f_SAL=..."
-    - "https://www.linkedin.com/jobs/search-results/?keywords=python%20developer%20remote&f_WT=2"
+    - "https://www.linkedin.com/jobs/search-results/?keywords=..."
   count: 50
 
 cv:
@@ -403,149 +277,127 @@ cv:
 
 gmail:
   draft_only: true
+  credentials_path: "credentials.json"
+
+llm:
+  provider: "local"
+  model: "qwen2.5:7b"
+  base_url: "http://localhost:11434/v1"
+  api_key: "ollama"
+
+apify:
+  api_token: ""
+  actor_id: "apify/linkedin-jobs-scraper"
+
+filter:
+  embedding_shortlist_size: 20
+  llm_fit_threshold: 70
+  embedding_model: "nomic-embed-text"
+  scoring_model: "llama3.2"
+
+email_finder:
+  provider: "anymailfinder"
+  api_key: ""
+  categories: ["engineering", "hr"]
+  max_domain_attempts: 3
+  fallback_enabled: true
+
+privacy:
+  redact_pii: true
 ```
 
-**API keys loaded from `.env` (not in config.yaml):**
+### 7.2 Environment Variables (`.env`)
+
 ```bash
-# .env
-GOOGLE_API_KEY=...
-ANYMAILFINDER_API_KEY=...
 APIFY_API_KEY=...
+ANYMAILFINDER_API_KEY=...
 OPENAI_API_KEY=...
 ```
-POST https://api.openai.com/v1/chat/completions
-Headers: Authorization: Bearer {OPENAI_API_KEY}
-Body: {"model": "gpt-4o", "messages": [{"role": "user", "content": "..."}]}
-Response: {"choices": [{"message": {"content": "..."}}]}
-```
 
-## Sequence Diagrams
+## 8. Data Storage
 
-### Main Pipeline (with skip detection)
+### 8.1 Local Files
 
 ```
-1. load_config() → resolve .env for API keys
-   ↓
-2. parse_cv(cv.path)
-   → If data/cv_parsed.json exists AND not --rerun: LOAD (skip)
-   → Else: parse CV → save data/cv_parsed.json
-   ↓
-3. scrape_jobs(search.urls)
-   → If data/apify_results.json exists AND not --rerun: LOAD (skip)
-   → Else: scrape → save data/apify_results.json
-   ↓
-4. filter_jobs(jobs, cv_text)  # Uses LLM structured output
-   → If data/filtered_jobs.json exists AND not --rerun: LOAD (skip)
-   → Else: call LLM → save data/filtered_jobs.json
-   ↓
-5. Load processed_jobs.json (deduplication) - skip already processed
-   ↓
-6. For each NEW qualifying job:
-    a. find_email(job.company)
-       → If data/emails/{job.id}.json exists: SKIP
-       → Else: call API → save data/emails/{job.id}.json
-    b. personalize_cv(base_cv, job)
-       → If data/cvs/personalized_cv_{job.id}.pdf exists: SKIP
-       → Else: call LLM → generate PDF → save
-    c. generate_cover_letter(job, cv_text)
-       → If data/cover_letters/{job_id}.txt exists: SKIP
-       → Else: call LLM → save
-    d. create_draft(email, cover_letter, cv_attachment_path)
-       → If data/drafts/{job_id}.json exists: SKIP
-       → If --dry-run: log only, skip API
-       → Else: call Gmail API → save
-    e. Mark job processed in processed_jobs.json
-   ↓
-7. save run_summary.json
-   ↓
-8. Display progress with rich.progress
+data/
+├── cv_parsed.json              # Step 1 output
+├── apify_results.json        # Step 2 output
+├── filtered_jobs.json         # Step 3 output (qualifying)
+├── filtered_out_jobs.json   # Step 3 output (rejected)
+├── emails.json               # Step 4 output
+├── cvs/
+│   └── {job_id}/
+│       ├── personalized_cv.pdf
+│       ├── personalized_cv.html
+│       ├── email.json
+│       └── job_info.json
+├── drafts/
+│   └── {draft_id}.json
+├── run_summary.json
+└── gmail_token.json         # OAuth cache
 ```
 
-### CLI Arguments
+### 8.2 Data Consistency
 
-```python
-# For __main__.py
-parser.add_argument("--step", type=int, choices=[1,2,3,4,5,6,7],
-                 help="Start from step N")
-parser.add_argument("--skip-steps", type=str,
-                 help="Comma-separated steps to skip (e.g., '2,3')")
-parser.add_argument("--rerun", action="store_true",
-                 help="Clear all intermediate data before running")
-parser.add_argument("--dry-run", action="store_true",
-                 help="Don't call any external APIs")
-parser.add_argument("--count", type=int, default=50,
-                 help="Limit jobs to process")
-parser.add_argument("--provider", choices=["local", "openai"],
-                 default="local", help="LLM provider")
+- **No database:** Flat file storage only
+- **Checkpoint caching:** Each step's output saved as checkpoint
+- **Idempotency:** Runs can be re-executed (overwrites files)
+
+## 9. Local LLM Integration
+
+### 9.1 Ollama
+
+**Runtime:** Ollama - runs locally, exposes OpenAI-compatible API
+
+**Default Model:** `qwen2.5:7b`
+- Excellent at JSON formatting and instruction following
+- ~8GB RAM/VRAM (runs on M1/M2/M3 Macs, RTX 3060+)
+- Zero cost, zero API rate limits, 100% private
+
+**Alternative Models:**
+- `llama3.2:3b` - Speed demon (~4GB VRAM)
+- `gemma2:9b` - Best quality (~12GB VRAM)
+
+### 9.2 Configuration
+
+```yaml
+llm:
+  provider: "local"  # or "openai"
+  model: "qwen2.5:7b"
+  base_url: "http://localhost:11434/v1"
+  api_key: "ollama"
 ```
 
-**Note:** Steps 4, 6b, and 6c use the LLM (OpenAI API or local Ollama). Parallel execution in step 6 reduces pipeline time from ~15min to ~3min for 50 jobs.
+## 10. External Integrations
 
-**Note:** Steps 4, 5a, and 5c use the LLM (OpenAI API). These are the only places where the LLM is called—not for routing, just for generating content.
-1. load_config()
-   ↓
-2. parse_cv(cv.path)
-   → save data/cv_parsed.json
-   ↓
-3. scrape_jobs(search.urls)
-   → save data/apify_results.json
-   ↓
-4. filter_jobs(jobs, cv_text)  # Filters: qualification match + accepting applications
-   → save data/filtered_jobs.json
-   → save data/filtered_out_jobs.json
-   ↓
-5. For each job in filtered_jobs:
-   a. personalize_cv(base_cv, job)
-      → save data/cvs/personalized_cv_{job.id}.pdf
-   b. find_email(job.company, job.hiring_manager)
-      → save data/emails/{job.id}.json
-   c. generate_cover_letter(job, cv_text)
-      → save data/cover_letters/{job.id}.txt
-   d. create_draft(email, cover_letter, cv_attachment)
-      → save data/drafts/{job.id}.json
-   ↓
-6. save run_summary.json
-```
+| Service | Integration Method | Purpose |
+|---------|------------------|---------|
+| Apify | HTTP REST API | Job scraping |
+| AnyMailFinder | HTTP REST API | Email discovery |
+| Gmail API | OAuth2 + REST | Draft creation |
+| Ollama | HTTP REST | LLM for cognitive tasks |
 
-## Error & Exception Handling
+## 11. Error Handling
 
-```python
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+| Error Type | Handling |
+|------------|----------|
+| Config invalid | Raise error, exit |
+| CV not found | Use mock CV |
+| Apify failure | Log error, continue to next URL |
+| AnyMailFinder rate limit | Skip job or use fallback |
+| Gmail failure | Log error, skip job |
+| LLM failure | Log error, skip job |
 
-class RateLimitError(Exception):
-    """Raised when API returns 429"""
-    pass
+## 12. Security
 
-class APIError(Exception):
-    """Raised for unrecoverable API errors"""
-    pass
+| Concern | Implementation |
+|---------|----------------|
+| API Keys | Environment variables only |
+| CV Data | Local file storage only |
+| Gmail OAuth | User authentication flow |
+| No secrets in code | All via config.yaml + env vars |
 
-# Only retry on RateLimitError
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type(RateLimitError)
-)
-def call_api_with_retry():
-    try:
-        return api_call()
-    except RateLimitError:
-        raise  # tenacity retries
-    except APIError as e:
-        log.error(f"Unrecoverable API error: {e}")
-        return None  # skip, don't retry
-```
-
-| Error Type | Action |
-|-----------|--------|
-| Missing config | Raise ConfigError, exit |
-| CV file not found | Raise FileNotFoundError, exit |
-| Apify API error | Log, skip URL, continue |
-| AnyMailFinder rate limit | Log warning, skip job (could fallback to company search) |
-| Gmail API error | Log, skip job |
-| OpenAI API error | Log, skip job |
-
-## Testing Strategy
+## 13. Testing Strategy
 
 | Test Type | Coverage |
 |----------|---------|
@@ -553,115 +405,10 @@ def call_api_with_retry():
 | Integration tests | Full pipeline with mocked APIs |
 | Dry-run tests | --dry-run flag, no API calls |
 
----
+## 14. Future Enhancements
 
-## Directory Structure
-
-```
-email-application-automation/
-├── app/
-│   ├── __main__.py          # CLI entry: python -m app run
-│   ├── __init__.py
-│   ├── config.py           # load_config()
-│   ├── models.py          # Pydantic models
-│   ├── agent.py           # Main orchestrator
-│   └── tools/
-│       ├── __init__.py
-│       ├── cv_parser.py    # parse_cv()
-│       ├── scraper.py     # scrape_jobs()
-│       ├── filter.py       # filter_jobs()
-│       ├── cv_personalizer.py  # personalize_cv()
-│       ├── email_finder.py   # find_email()
-│       ├── cover_letter.py   # generate_cover_letter()
-│       └── gmail_draft.py   # create_draft()
-├── config.yaml
-├── pyproject.toml
-├── requirements.txt
-└── data/               # created at runtime
-    ├── cv_parsed.json
-    ├── apify_results.json
-    ├── filtered_jobs.json
-    ├── filtered_out_jobs.json
-    ├── cvs/
-    ├── emails/
-    ├── cover_letters/
-    ├── drafts/
-    └── run_summary.json
-```
-
----
-
-## CLI Interface
-
-```bash
-# Normal run
-python -m app run
-
-# Dry-run (no API calls)
-python -m app run --dry-run
-
-# Help
-python -m app run --help
-```
-
----
-
-## Config Validation
-
-```python
-import os
-import re
-from functools import lru_cache
-
-def resolve_env_vars(value: str) -> str:
-    """Resolve ${VAR_NAME} patterns in config values."""
-    pattern = r'\$\{(\w+)\}'
-    def replacer(match):
-        var_name = match.group(1)
-        return os.getenv(var_name, match.group(0))
-    return re.sub(pattern, replacer, value)
-
-def resolve_config_env_vars(config: dict) -> dict:
-    """Recursively resolve environment variables in config."""
-    if isinstance(config, dict):
-        return {k: resolve_config_env_vars(v) for k, v in config.items()}
-    elif isinstance(config, list):
-        return [resolve_config_env_vars(item) for item in config]
-    elif isinstance(config, str) and '${' in config:
-        return resolve_env_vars(config)
-    return config
-
-# On startup
-def validate_config(config: Config) -> None:
-    if not config.search.urls:
-        raise ConfigError("search.urls is required")
-    if not config.cv.path:
-        raise ConfigError("cv.path is required")
-    # Check API keys exist
-    required_keys = ["google", "anymailfinder", "apify", "openai"]
-    for key in required_keys:
-        if not config.api_keys.get(key):
-            raise ConfigError(f"api_keys.{key} is required (or set as environment variable)")
-```
-
-**Note:** Secrets should be stored in `.env` file (loaded via `python-dotenv`), not in `config.yaml`. `config.yaml` should only contain non-secret configuration.
-
-```yaml
-# config.yaml (non-secret config only)
-search:
-  urls:
-    - "https://www.linkedin.com/jobs/search-results/?keywords=..."
-  count: 50
-cv:
-  path: "./cv.pdf"
-gmail:
-  draft_only: true
-```
-
-```bash
-# .env (secrets - never commit)
-GOOGLE_API_KEY=sk-...
-ANYMAILFINDER_API_KEY=sk-...
-APIFY_API_KEY=sk-...
-OPENAI_API_KEY=sk-...
-```
+| Component | Planned |
+|-----------|---------|
+| Scheduling | Cron-based or FastAPI scheduler |
+| Cloud deployment | Docker support |
+| Parallel processing | asyncio for concurrent runs |

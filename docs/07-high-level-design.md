@@ -1,6 +1,6 @@
 # High-Level Design – AI Automated Email Job Application System
 
-## Conceptual Architecture
+## 1. Conceptual Architecture
 
 **Pattern:** Deterministic Python Async Pipeline with LLM-powered Tools
 
@@ -9,111 +9,62 @@ The system follows a **deterministic orchestrator + LLM-powered tools** pattern:
 - **Tools:** Use LLM via direct API calls (Ollama httpx) for cognitive tasks inside each step
 
 This pattern is correct because:
-- Workflow is rigidly linear (Scrape → Filter → Personalize → Email → Draft) - no dynamic branching
+- Workflow is rigidly linear (Parse CV → Scrape → Filter → Personalize → Email → Draft)
 - Avoids cost/latency of LLM "what to do next" decisions
 - Avoids hallucination risks (LLM skipping steps)
 - Python controls the track; LLMs handle the cognitive work on the track
 
+## 2. System Architecture Diagram
+
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│              Deterministic Python Orchestrator            │
-│                (agent.py - async pipeline)                 │
-│            Supports: --step N, --force, --dry-run         │
+│              Deterministic Python Orchestrator                │
+│                (agent.py - async pipeline)                  │
+│            Supports: --step N, --force, --dry-run          │
 └─────────────────────┬────────────────────────────────────┘
                       │
-        ┌────────────▼────────────┐
-        │    Config Loader       │
-        │    (config.py)         │
-        └────────┬───────────────┘
-                 │
-        ┌────────▼────────────┐
-        │    CV Parser         │
-        │ (tools/cv_parser.py) │  ← pdfplumber (PDF) or read_text (TXT)
-        └────────┬─────────────┘
-                 │
-        ┌────────▼────────────┐
-        │    Scraper          │
-        │ (tools/scraper.py)  │  ← Apify API (async polling)
-        └────────┬─────────────┘
-                 │
-        ┌────────▼────────────┐
-        │  Filter (Two-Stage)  │
-        │ (tools/filter.py)   │  ← Stage1: nomic-embed-text (embedding)
-        └────────┬────────────┘        Stage2: llama3.2 (LLM scoring)
-                 │
-        ┌────────▼────────────┐
-        │  Email Finder       │
-        │ (tools/email_finder) │  ← AnyMailFinder API + web fallback
-        └────────┬────────────┘
-                 │
-        ┌────────▼────────────┐
-        │  CV Personalizer    │
-        │(tools/cv_personalizer)│ ← Deterministic parse + LLM tailoring
-        └────────┬────────────┘   ← weasyprint HTML→PDF
-                 │
-        ┌────────▼────────────┐
-        │  Email Composer     │
-        │(tools/email_composer)│ ← Template-based (no LLM)
-        └────────┬────────────┘
-                 │
-        ┌────────▼────────────┐
-        │  Gmail Draft       │
-        │(tools/gmail_draft) │  ← Gmail API OAuth2
-        └─────────────────────┘
+         ┌────────────▼────────────┐
+         │    Config Loader       │
+         │    (config.py)         │
+         └────────┬───────────────┘
+                  │
+         ┌────────▼────────────┐
+         │    CV Parser         │
+         │ (tools/cv_parser.py) │  ← pdfplumber (PDF) or read_text (TXT)
+         └────────┬─────────────┘
+                  │
+         ┌────────▼────────────┐
+         │    Scraper          │
+         │ (tools/scraper.py)  │  ← Apify API (async polling)
+         └────────┬─────────────┘
+                  │
+         ┌────────▼────────────┐
+         │  Filter (Two-Stage) │
+         │ (tools/filter.py)   │  ← Stage1: nomic-embed-text (embedding)
+         └────────┬────────────┘        Stage2: llama3.2 (LLM scoring)
+                  │
+         ┌────────▼────────────┐
+         │  Email Finder       │
+         │ (tools/email_finder) │  ← AnyMailFinder API + web fallback
+         └────────┬────────────┘
+                  │
+         ┌────────▼────────────┐
+         │  CV Personalizer  │
+         │(tools/cv_personalizer)│ ← Deterministic parse + LLM tailoring
+         └────────┬────────────┘   ← weasyprint HTML→PDF
+                  │
+         ┌────────▼────────────┐
+         │  Email Composer   │
+         │(tools/email_composer)│ ← Template-based (no LLM)
+         └────────┬────────────┘
+                  │
+         ┌────────▼────────────┐
+         │  Gmail Draft       │
+         │ (tools/gmail_draft) │  ← Gmail API OAuth2
+         └─────────────────────┘
 ```
 
-**Key Distinction:**
-- **Orchestrator (Python):** "I am at the filtering step, execute your logic" - deterministic
-- **LLM-powered Tool:** "Evaluate this CV + job, return structured decision" - cognitive via httpx
-┌──────────────────────────────────────────────────────────────┐
-│                    Orchestrator Agent                     │
-│                   (Pydantic AI Agent)                    │
-└─────────────────────┬────────────────────────────────────┘
-                      │
-        ┌────────────▼────────────┐
-        │    Config Loader        │
-        │    (config.py)        │
-        └────────┬─────────────┘
-                 │
-        ┌────────▼────────────┐
-        │    CV Parser       │
-        │ (cv_parser.py)    │
-        └────────┬─────────────┘
-                 │
-        ┌────────▼────────────┐
-        │    Scraper       │
-        │  (scraper.py)    │
-        │   (Apify)       │
-        └────────┬─────────────┘
-                 │
-        ┌────────▼────────────┐
-        │    Filter         │
-        │  (filter.py)     │
-        │   (LLM-based)   │
-        └────────┬─────────────┘
-                 │
-        ┌────────▼────────────┐
-        │ CV Personalizer  │
-        │(cv_personalizer) │
-        └────────┬────────────┘
-                 │
-        ┌────────▼────────────┐
-        │  Email Finder    │
-        │(email_finder.py)│
-        └────────┬────────────┘
-                 │
-        ┌────────▼────────────┐
-        │ Cover Letter     │
-        │(cover_letter.py) │
-        └────────┬────────────┘
-                 │
-        ┌────────▼────────────┐
-        │  Gmail Draft      │
-        │ (gmail_draft.py)  │
-        └──────────────────┘
-```
-
-## System Decomposition
+## 3. System Decomposition
 
 | Module/Service | Responsibility | Input | Output |
 |---------------|---------------|-------|--------|
@@ -122,29 +73,31 @@ This pattern is correct because:
 | `scraper.py` | Scrape jobs via Apify | Search URLs | `list[Job]` |
 | `filter.py` | Filter jobs (qualification + accepting status) | Jobs + CV text | `tuple[qualifying, rejected]` |
 | `cv_personalizer.py` | Generate personalized CV PDF | Base CV + Job | PDF file path |
+| `email_composer.py` | Compose application email | Job + CV data | Email body |
 | `email_finder.py` | Discover hiring manager email | Company name | Email address |
-| `cover_letter.py` | Generate personalized cover letter | Job + CV | Cover letter text |
 | `gmail_draft.py` | Create Gmail draft | To, subject, body, attachment | Draft ID |
 
-## Data Flow & Communication
+## 4. Data Flow & Communication
 
-### Synchronous Sequential Flow
+### 4.1 Synchronous Sequential Flow
 
-All components execute **synchronously** in a single thread:
+All components execute in a hybrid manner:
+- Steps 1-3: Sequential (each depends on previous output)
+- Steps 4-6: Parallel per-job processing (no inter-job dependencies)
 
 ```
 Config (YAML) → CV Parse → Scrape → Filter → For Each Job:
-    → Personalize CV → Find Email → Generate Cover Letter → Create Gmail Draft
+    → Personalize CV → Find Email → Compose Email → Create Gmail Draft
 ```
 
 **Protocol:** Direct Python function calls (no HTTP/REST between modules)
 
 **Rationale:** 
 - Simple for 50 jobs/day (low volume)
-- No need for async processing
-- Easier debugging with sequential logs
+- Parallel processing for per-job steps (reduces ~15min to ~3min)
+- Easier debugging with sequential initial steps
 
-### Data Passing Format
+### 4.2 Data Passing Format
 
 | Transition | Data Format |
 |------------|------------|
@@ -153,49 +106,56 @@ Config (YAML) → CV Parse → Scrape → Filter → For Each Job:
 | Scraper → Filter | `list[Job]` (Pydantic models) |
 | Filter → Personalizer | `list[Job]`, `str` (CV text) |
 | Personalizer → Email Finder | `Job` object |
-| Email Finder → Cover Letter | `str` (email), `Job` |
-| Cover Letter → Gmail Draft | `str` (letter), `Path` (CV PDF) |
+| Email Finder → Email Composer | `str` (email), `Job` |
+| Email Composer → Gmail Draft | `str` (letter), `Path` (CV PDF) |
 
-## Integration Architecture
+## 5. Integration Architecture
 
-### External Services
+### 5.1 External Services
 
 | Service | Integration Method | Purpose |
 |---------|------------------|---------|
 | **Apify** | HTTP REST API | Job scraping |
-| **AnyMailFinder** | Via Pydantic AI Agent tool | Email discovery (with fallback) |
+| **AnyMailFinder** | HTTP REST API | Email discovery (with fallback) |
 | **Gmail API** | OAuth2 + REST | Draft creation |
 | **Ollama** | HTTP REST (OpenAI-compatible) | LLM for cognitive tasks |
 
-### Why Pydantic AI Agents for Tools (Not for Orchestration!)
+### 5.2 Tools Using LLM
 
-| Tool | Uses Pydantic AI Agent | Why |
-|------|---------------------|-----|
-| **Filter** | ✓ Yes | Cognitive evaluation, structured `FilterDecision` output |
-| **CV Personalizer** | ✓ Yes | Structured JSON output → HTML template |
-| **Email Finder** | ✓ Yes | Multi-tool reasoning (API → parse description → guess pattern) |
-| **Cover Letter** | ✓ Yes | System prompt enforces professional tone |
+| Tool | Uses LLM | Why |
+|------|---------|-----|
+| **Filter** | Yes | Cognitive evaluation, structured decision output |
+| **CV Personalizer** | Yes | Structured content generation → HTML template |
+| **Email Composer** | No | Template-based, no LLM needed |
+| **Email Finder** | No | API-based with web fallback |
 
 | Component | NOT an LLM Agent | Why |
 |-----------|----------------|-----|
-| **Orchestrator** | ✗ Python only | Fixed pipeline, no "what to do next" decisions |
+| **Orchestrator** | Python only | Fixed pipeline, no "what to do next" decisions |
 
-The orchestrator is a **deterministic Python async pipeline**. The Pydantic AI agents are used **inside** each tool step for cognitive work.
+## 6. Local LLM (Ollama) Recommendation
 
-### Local LLM (Ollama) Recommendation
+### 6.1 Runtime
 
-**Runtime:** [Ollama](https://ollama.com) - runs locally, exposes OpenAI-compatible API
+**[Ollama](https://ollama.com)** - runs locally, exposes OpenAI-compatible API
 
-**Default Model:** `qwen2.5:7b`
+### 6.2 Default Model
+
+`qwen2.5:7b`:
 - Excellent at JSON formatting and instruction following
 - ~8GB RAM/VRAM (runs on M1/M2/M3 Macs, RTX 3060+)
 - Zero cost, zero API rate limits, 100% private
 
-**Alternative Models:**
-- `llama3.2:3b` - Speed demon (~4GB VRAM)
-- `gemma2:9b` - Best quality (~12GB VRAM)
+### 6.3 Alternative Models
 
-**Configuration in `config.yaml`:**
+| Model | VRAM | Best For |
+|-------|------|---------|
+| `llama3.2:3b` | ~4GB | Speed |
+| `gemma2:9b` | ~12GB | Quality |
+| `qwen2.5:7b` | ~8GB | Balanced |
+
+### 6.4 Configuration
+
 ```yaml
 llm:
   provider: "local"  # or "openai"
@@ -204,21 +164,16 @@ llm:
   api_key: "ollama"
 ```
 
-**Benefits:**
+### 6.5 Benefits
+
 - Zero cost per run (vs ~$4.50 with OpenAI)
 - No PII sent to external services
 - No rate limits
 - Parallel processing possible (reduces ~15min to ~3min)
 
-### API boundaries
+## 7. High-Level Data Strategy
 
-- **Inbound:** `config.yaml` (YAML file read), CV file (PDF/TXT)
-- **Outbound:** Gmail draft creation only
-- **All other integrations:** Call-level, not exposed as REST
-
-## High-Level Data Strategy
-
-### Source of Truth
+### 7.1 Source of Truth
 
 | Data Type | Storage | Source |
 |----------|---------|--------|
@@ -227,72 +182,59 @@ llm:
 | Job listings | `data/apify_results.json` | Apify API |
 | Filtered jobs | `data/filtered_jobs.json` | LLM filter |
 | Personalized CVs | `data/cvs/*.pdf` | Generated PDF |
-| Email addresses | `data/emails/*.json` | AnyMailFinder |
-| Cover letters | `data/cover_letters/*.txt` | LLM generation |
+| Email addresses | `data/emails.json` | AnyMailFinder |
 | Gmail drafts | Gmail API | Created drafts |
 | Run summary | `data/run_summary.json` | Orchestrator |
+| Applied jobs | `data/processed_jobs.json` | AppliedTracker |
 
-### Data Consistency
+### 7.2 Data Consistency
 
 - **No database:** Flat file storage only
-- **No caching:** Each run is independent
+- **Checkpoint caching:** Each step's output saved as checkpoint
 - **Idempotency:** Runs can be re-executed (overwrites files)
 
-### Local Storage Structure (Checkpoints for Skip Detection)
+### 7.3 Local Storage Structure
 
 ```
 data/
-├── config_loaded.json      # Config used
-├── cv_parsed.json        # Step 1 checkpoint
-├── apify_results.json     # Step 2 checkpoint
-├── filtered_jobs.json     # Step 3 checkpoint
-├── filtered_out_jobs.json # Rejected jobs
-├── processed_jobs.json    # Deduplication tracking
+├── cv_parsed.json              # Step 1 checkpoint
+├── apify_results.json         # Step 2 checkpoint
+├── filtered_jobs.json        # Step 3 checkpoint (qualifying)
+├── filtered_out_jobs.json    # Step 3 checkpoint (rejected)
+├── emails.json               # Step 4 output
+├── processed_jobs.json       # Deduplication: job_id -> draft_id
 ├── cvs/
-│   └── personalized_cv_{job_id}.pdf  # Step 4: Per-job
-├── emails/
-│   └── {job_id}.json  # Step 5: Per-job
-├── cover_letters/
-│   └── {job_id}.txt  # Step 6: Per-job
+│   └── {job_id}/
+│       ├── personalized_cv.pdf
+│       ├── personalized_cv.html
+│       ├── email.json
+│       └── job_info.json
 ├── drafts/
-│   └── {job_id}.json # Step 7: Per-job
-├── gmail_token.json   # OAuth token
-└── run_summary.json # Final summary
+│   └── {draft_id}.json
+├── gmail_token.json          # OAuth token
+└── run_summary.json        # Final summary
 ```
 
 **Key Feature:** Each step's output is saved as a checkpoint. On subsequent runs:
-- If checkpoint exists + not --rerun → Load from file (skip API call)
+- If checkpoint exists + not --force → Load from file (skip API call)
 - This prevents wasting Apify/AnyMailFinder credits on re-scraping
-data/
-├── config_loaded.json      # Config used
-├── cv_parsed.json        # Parsed CV text
-├── apify_results.json     # Raw job listings
-├── filtered_jobs.json     # Qualifying jobs
-├── filtered_out_jobs.json # Rejected jobs
-├── processed_jobs.json    # Deduplication: job_id -> draft_id mapping
-├── cvs/
-│   └── personalized_cv_{job_id}.pdf
-├── emails/
-│   └── {job_id}.json
-├── cover_letters/
-│   └── {job_id}.txt
-├── drafts/
-│   └── {job_id}.json
-├── gmail_token.json      # Gmail OAuth token
-└── run_summary.json
-```
 
-## Infrastructure & Deployment View
+## 8. Infrastructure & Deployment
 
-### Runtime Environment
+### 8.1 Runtime Environment
 
 | Component | Environment |
 |-----------|--------------|
 | Python | 3.11+ (local) |
 | OS | macOS, Linux |
-| Deployment | Manual (`python -m app run`) |
+| Deployment | `python -m app run` |
 
-### Future (Out of Scope for MVP)
+### 8.2 Requirements
+
+- **Python Packages:** See `pyproject.toml`
+- **External:** Ollama (optional, for local LLM)
+
+### 8.3 Future (Out of Scope for MVP)
 
 | Component | Planned |
 |-----------|---------|
@@ -300,16 +242,9 @@ data/
 | Cloud deployment | Not planned |
 | Containerization | Docker (optional for portability) |
 
-### No External Infrastructure Required
+## 9. Cross-Cutting Concerns
 
-- No database server
-- No message queue
-- No load balancer
-- No CDN
-
-## Cross-Cutting Concerns
-
-### Security
+### 9.1 Security
 
 | Concern | Implementation |
 |---------|----------------|
@@ -317,20 +252,19 @@ data/
 | CV Data | Local file storage only |
 | Gmail OAuth | User authentication flow |
 | No secrets in code | All via `config.yaml` + env vars |
-| PII Handling | Config option `privacy.redact_pii: true` + redaction step before LLM |
-| Prompt Injection | Sanitize job descriptions before LLM prompts |
+| PII Handling | Config option `privacy.redact_pii: true` |
 
-### Observability
+### 9.2 Observability
 
 | Concern | Implementation |
 |---------|----------------|
-| Logging | structlog after each step |
-| Progress | rich.progress bar during parallel processing |
+| Logging | Print statements + structured output |
+| Progress | Console output during execution |
 | Metrics | `run_summary.json` (jobs found, filtered, drafts created) |
 | Errors | Logged to console + stored in `run_summary.json` |
 | Debugging | All intermediate data stored locally |
 
-### Scalability
+### 9.3 Scalability
 
 **Current limits (50 jobs/day):**
 - Sequential processing: sufficient for MVP
@@ -343,20 +277,49 @@ data/
 - Batch Apify requests
 - FastAPI wrapper for concurrent runs
 
-### Error Handling
+### 9.4 Error Handling
 
 | Error Type | Handling |
 |------------|----------|
 | Config invalid | Raise error, exit |
-| CV not found | Raise error, exit |
-| Apify failure | Log error, skip URL, continue |
-| AnyMailFinder rate limit | Skip job or use free fallback |
+| CV not found | Use mock CV |
+| Apify failure | Log error, continue |
+| AnyMailFinder rate limit | Use fallback or skip |
 | Gmail failure | Log error, skip job |
 | LLM failure | Log error, skip job |
 
-## Component Interaction Diagram
+## 10. CLI Interface
 
-### End-to-End Flow
+```bash
+# Full pipeline
+python -m app run
+
+# Specific step (1-6)
+python -m app run --step 3
+
+# Force re-run, ignore cache
+python -m app run --force
+
+# Use cached jobs only
+python -m app run --cached
+
+# Dry run (no external APIs)
+python -m app run --dry-run
+
+# Include already applied jobs
+python -m app run --include-applied
+
+# Stop after filtering
+python -m app run --filter-only
+
+# Limit jobs
+python -m app run --limit 10
+
+# Custom config file
+python -m app run --config my_config.yaml
+```
+
+## 11. End-to-End Flow
 
 ```
 1. User configures config.yaml
@@ -392,10 +355,10 @@ data/
       → AnyMailFinder API call
       → Output: email address
 
-      [Cover Letter]
-      → generate_cover_letter(job, cv_text)
-      → LLM generates letter
-      → Output: letter text
+      [Email Composer]
+      → compose_email(job, cv_data)
+      → Template-based generation
+      → Output: email body
 
       [Gmail Draft]
       → create_draft(to, subject, body, attachment)
@@ -410,11 +373,18 @@ data/
 4. User sends manually when ready
 ```
 
-### Parallel Opportunities
+## 12. Key Distinctions
 
-The following can run in parallel **if scaled**:
-- `personalize_cv()` for different jobs (no dependencies)
-- `find_email()` for different jobs (no dependencies)
-- `generate_cover_letter()` for different jobs (no dependencies)
+| Component | Type | Implementation |
+|-----------|------|-------------|
+| **Orchestrator** | Python async pipeline | Fixed workflow, caching, step control |
+| **Filter** | Two-stage (embedding + LLM) | nomic-embed-text + llama3.2 via httpx |
+| **CV Personalizer** | Deterministic parse + LLM | Regex parsing + weasyprint PDF |
+| **Email Finder** | API + web fallback | AnyMailFinder API + DuckDuckGo search |
+| **Email Composer** | Template-based | f-string templates |
+| **Gmail Draft** | Gmail API OAuth2 | google-api-python-client |
 
-Current implementation: Sequential (simplest for MVP)
+| Component | NOT | Why |
+|-----------|-----|-----|
+| **Orchestrator** | LLM agent | Fixed pipeline, no dynamic decisions |
+| **Email Composer** | LLM | Template-based, deterministic |

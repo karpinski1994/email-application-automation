@@ -23,19 +23,22 @@ src/
 │   │   ├── cv_personalizer.py # CV personalization with PDF generation
 │   │   ├── email_composer.py  # Email subject/body generation
 │   │   ├── cover_letter.py    # (legacy, now in email_composer)
-│   │   └── gmail_draft.py     # Gmail API integration (OAuth2)
+│   │   ├── gmail_draft.py     # Gmail API integration (OAuth2)
+│   │   ├── applied_tracker.py  # Track applied jobs
+│   │   └── __init__.py
 │   │
 │   └── templates/
 │       └── cv_template.html   # Jinja2 CV HTML template
 │
 ├── data/                   # Generated at runtime (gitignored)
 ├── config.yaml             # Main configuration
+├── config.example.yaml     # Example configuration
 ├── .env                    # API keys (gitignored)
 ├── pyproject.toml
 └── README.md
 ```
 
-**Document Hierarchy:** TDD is the contract of record. LLD conforms to TDD. In case of conflicts, TDD supersedes LLD.
+---
 
 ## Class & Object Design
 
@@ -44,8 +47,10 @@ src/
 ```python
 from pydantic import BaseModel, Field
 from typing import Optional
+from pathlib import Path
 
 # === Configuration Models ===
+
 class SearchConfig(BaseModel):
     urls: list[str] = Field(min_length=1, description="List of job search URLs")
     count: int = Field(default=100, ge=1, le=200, description="Max jobs to process")
@@ -66,7 +71,7 @@ class LLMConfig(BaseModel):
 
 class ApifyConfig(BaseModel):
     api_token: str = ""
-    actor_id: str = "hKByXkMQaC5Qt9UMN"
+    actor_id: str = "apify/linkedin-jobs-scraper"
 
 class FilterConfig(BaseModel):
     embedding_shortlist_size: int = 20
@@ -77,9 +82,10 @@ class FilterConfig(BaseModel):
 class EmailFinderConfig(BaseModel):
     provider: str = "anymailfinder"
     api_key: str = ""
-    categories: list[str] = ["engineering", "hr"]
+    categories: list[str] = Field(default_factory=lambda: ["engineering", "hr"])
     max_domain_attempts: int = 3
     fallback_enabled: bool = True
+    fallback_max_attempts: int = 3
 
 class PrivacyConfig(BaseModel):
     redact_pii: bool = True
@@ -140,7 +146,9 @@ class RunSummary(BaseModel):
     errors: list[str]
 ```
 
-### Utility Functions (`utils.py`)
+---
+
+## Utility Functions (`utils.py`)
 
 ```python
 import json
@@ -170,7 +178,9 @@ def ensure_data_dir() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 ```
 
-### Config Loader (`config.py`)
+---
+
+## Config Loader (`config.py`)
 
 ```python
 import os
@@ -198,9 +208,15 @@ def load_config(config_path: str = "config.yaml") -> Config:
         raw["email_finder"]["api_key"] = os.getenv("ANYMAILFINDER_API_KEY", raw["email_finder"].get("api_key", ""))
     
     return Config(**raw)
+
+def get_api_key(key: str) -> str:
+    """Get API key from environment variable."""
+    return os.getenv(key, "")
 ```
 
-### CV Parser (`tools/cv_parser.py`)
+---
+
+## CV Parser (`tools/cv_parser.py`)
 
 ```python
 from pathlib import Path
@@ -258,7 +274,9 @@ EDUCATION
 Bachelor of Science in Computer Science, University of California, 2018"""
 ```
 
-### Scraper (`tools/scraper.py`)
+---
+
+## Scraper (`tools/scraper.py`)
 
 ```python
 import httpx
@@ -275,7 +293,7 @@ async def scrape_jobs(urls: list[str], apify_config: ApifyConfig, count: int = 5
     Uses async run approach (POST /runs → poll status → GET dataset items)
     to avoid the 300s timeout limitation of the synchronous endpoint.
     
-    Actor: curious_coder/linkedin-jobs-scraper (ID: hKByXkMQaC5Qt9UMN)
+    Actor: apify/linkedin-jobs-scraper
     """
     if not apify_config.api_token:
         print("⚠️  Apify API token not configured, using mock data")
@@ -331,7 +349,9 @@ async def _scrape_with_apify(urls: list[str], config: ApifyConfig, count: int) -
     return jobs
 ```
 
-### Filter (`tools/filter.py`)
+---
+
+## Filter (`tools/filter.py`)
 
 ```python
 import asyncio
@@ -374,9 +394,6 @@ async def filter_jobs(
     Stage 1: Embedding similarity (nomic-embed-text) — top N jobs pass.
     Stage 2: LLM scoring (llama3.2) — batch scoring, threshold filter.
     
-    Reads raw data from data/apify_results.json for richer context.
-    Pre-filters jobs without company website (can't find email).
-    
     Returns:
         (qualifying_jobs, rejected_jobs)
     """
@@ -408,7 +425,9 @@ async def filter_jobs(
     return qualifying, rejected
 ```
 
-### CV Personalizer (`tools/cv_personalizer.py`)
+---
+
+## CV Personalizer (`tools/cv_personalizer.py`)
 
 ```python
 import asyncio
@@ -483,7 +502,9 @@ async def personalize_cv(cv_text: str, job: Job, force: bool = False, to_email: 
     return output_path
 ```
 
-### Email Finder (`tools/email_finder.py`)
+---
+
+## Email Finder (`tools/email_finder.py`)
 
 ```python
 import asyncio
@@ -548,15 +569,9 @@ async def find_email_for_job(
     return {"email": ..., "status": ...}
 ```
 
-### Web Email Finder (`tools/web_email_finder.py`)
+---
 
-```python
-# Web search fallback for when AnyMailFinder fails
-# Uses DuckDuckGo via ddgs library to find company emails
-```
-```
-
-### Email Composer (`tools/email_composer.py`)
+## Email Composer (`tools/email_composer.py`)
 
 ```python
 import re
@@ -616,7 +631,9 @@ def compose_email(job: Job, cv_text: str, cv_data: dict = None, to_email: str = 
     }
 ```
 
-### Gmail Draft (`tools/gmail_draft.py`)
+---
+
+## Gmail Draft (`tools/gmail_draft.py`)
 
 ```python
 import base64
@@ -727,7 +744,61 @@ async def create_draft(
         return f"error: {str(e)}"
 ```
 
-### Orchestrator (`agent.py`)
+---
+
+## Applied Tracker (`tools/applied_tracker.py`)
+
+```python
+import json
+from pathlib import Path
+from datetime import datetime
+from app.utils import DATA_DIR
+
+class AppliedTracker:
+    """Track jobs that have been applied to avoid duplicates."""
+    
+    def __init__(self, path: Path = None):
+        self.path = path or DATA_DIR / "processed_jobs.json"
+        self._ensure_file()
+    
+    def _ensure_file(self):
+        if not self.path.exists():
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path.write_text("[]")
+    
+    def _load(self) -> list:
+        return json.loads(self.path.read_text())
+    
+    def _save(self, data: list):
+        self.path.write_text(json.dumps(data, indent=2))
+    
+    def is_applied(self, job_url: str) -> bool:
+        """Check if job URL has already been applied to."""
+        applied = self._load()
+        return any(entry.get("job_url") == job_url for entry in applied)
+    
+    def mark_applied(self, job_url: str, company: str, draft_id: str = None, 
+                  subject: str = None, to: str = None):
+        """Mark a job as applied."""
+        applied = self._load()
+        applied.append({
+            "job_url": job_url,
+            "company": company,
+            "draft_id": draft_id,
+            "subject": subject,
+            "to": to,
+            "applied_at": datetime.now().isoformat()
+        })
+        self._save(applied)
+    
+    def get_applied_count(self) -> int:
+        """Get count of applied jobs."""
+        return len(self._load())
+```
+
+---
+
+## Orchestrator (`agent.py`)
 
 ```python
 import asyncio
@@ -738,21 +809,49 @@ from pathlib import Path
 from app.models import Job, RunSummary
 from app.utils import DATA_DIR, ensure_data_dir, is_cached, load_json, save_json
 
-async def run(config, force=False, step=1, dry_run=False, filter_only=False):
+async def run(config, force=False, step=1, dry_run=False, filter_only=False, explicit_step=False, include_applied=False, cached=False):
     """Pipeline orchestrator.
     
     Supports stepping: --step N starts from specific step (1-6).
-    Uses caching: each step loads from data/*.json if exists.
+    Supports caching: each step loads from data/*.json if exists.
+    Supports dry-run: skips external API calls.
     """
     ensure_data_dir()
     started_at = datetime.now().isoformat()
     errors = []
     
+    # Load Lazy imports - only load modules when actually needed
+    if step <= 1:
+        from app.tools.cv_parser import parse_cv, parse_cv_mock
+    if step <= 2:
+        from app.tools.scraper import scrape_jobs
+    if step <= 3:
+        from app.tools.filter import filter_jobs
+    if step <= 4:
+        from app.tools.email_finder import find_emails_for_jobs
+    if step <= 5:
+        from app.tools.cv_personalizer import personalize_all_filtered, personalize_cv
+    if step <= 6:
+        from app.tools.gmail_draft import create_draft
+    
+    # Validate prerequisites
+    validate_prerequisites(step)
+    
+    # Show applied jobs count
+    if not include_applied:
+        try:
+            from app.tools.applied_tracker import AppliedTracker
+            tracker = AppliedTracker()
+            applied_count = tracker.get_applied_count()
+            if applied_count > 0:
+                print(f"📋 {applied_count} jobs already applied (will be skipped)")
+        except Exception:
+            pass
+    
     # Step 1: Parse CV
     cv_path = DATA_DIR / "cv_parsed.json"
     if step <= 1:
         if force or not is_cached(cv_path):
-            from app.tools.cv_parser import parse_cv, parse_cv_mock
             try:
                 cv_text = parse_cv(config.cv.path)
             except FileNotFoundError:
@@ -761,133 +860,66 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
         else:
             cv_text = load_json(cv_path).get("text", "")
         print(f"Step 1: CV parsed ({len(cv_text)} chars)")
+        
+        if step == 1 and explicit_step:
+            return RunSummary(...)
     
     # Step 2: Scrape jobs (from cache or Apify)
     jobs_path = DATA_DIR / "apify_results.json"
     if step <= 2:
-        if is_cached(jobs_path) and not force:
+        if is_cached(jobs_path) and cached:
             jobs = _load_jobs_from_apify_cache(jobs_path)
-            print(f"Step 2: Loaded {len(jobs)} jobs from cache")
+            print(f"Step 2: Loaded {len(jobs)} jobs from cache (skipping Apify call)")
         else:
-            from app.tools.scraper import scrape_jobs
             jobs = await scrape_jobs(config.search.urls, config.apify, config.search.count)
             save_json(jobs_path, [j.model_dump() for j in jobs])
             print(f"Step 2: Scraped {len(jobs)} jobs")
     
     # Step 3: Filter jobs (two-stage: embedding + LLM)
     if step <= 3:
-        from app.tools.filter import filter_jobs
-        # ... filtering logic
+        # Filter out already-applied jobs (with safety wraps)
+        if not include_applied:
+            from app.tools.applied_tracker import AppliedTracker
+            tracker = AppliedTracker()
+            jobs = [j for j in jobs if not tracker.is_applied(j.url)]
+        
+        # Stage 1 + Stage 2 filtering with LLM
+        qualifying, rejected = await filter_jobs(...)
+        print(f"Step 3: {len(qualifying)} jobs qualified")
     
-    # Step 4: Find emails (AnyMailFinder + web fallback)
+    # Early return if filter-only mode
+    if filter_only:
+        return RunSummary(...)
+    
+    # Step 4: Find Emails
     if step <= 4:
-        from app.tools.email_finder import find_emails_for_jobs
+        emails = await find_emails_for_jobs(qualifying, config.email_finder, force=force)
+        print(f"Step 4: Found {valid_count}/{len(emails)} emails")
     
     # Step 5: Personalize CVs
     if step <= 5:
-        from app.tools.cv_personalizer import personalize_all_filtered
+        pdf_paths = await personalize_all_filtered(force=force)
+        print(f"Step 5: {len(pdf_paths)} CVs generated")
     
     # Step 6: Create Gmail drafts
     if step <= 6:
-        from app.tools.gmail_draft import create_draft
-        # ... draft creation logic
-    
-    return RunSummary(
-        started_at=started_at,
-        finished_at=datetime.now().isoformat(),
-        jobs_found=len(jobs),
-        jobs_filtered=len(jobs) - len(qualifying),
-        jobs_qualified=len(qualifying),
-        drafts_created=drafts_created,
-        errors=errors
-    )
-```
-
-**Key Architectural Distinction:**
-
-| Component | Type | Implementation |
-|-----------|------|-----------------|
-| **Orchestrator** | Python async pipeline | Fixed workflow, caching, step control |
-| **Filter** | Two-stage (embedding + LLM) | nomic-embed-text + llama3.2 via httpx |
-| **CV Personalizer** | Deterministic parse + LLM tailoring | Regex parsing + weasyprint PDF |
-| **Email Finder** | API + web fallback | AnyMailFinder API + DuckDuckGo search |
-| **Email Composer** | Template-based | Jinja2-style f-string templates |
-| **Gmail Draft** | Gmail API OAuth2 | google-api-python-client |
-
-**Key Architectural Distinction:**
-
-| Component | Type | Why |
-|-----------|------|-----|
-| **Orchestrator** | **Deterministic Python async pipeline** | Fixed workflow, no LLM "decisions" |
-| **Filter** | Pydantic AI Agent | Cognitive evaluation, structured output |
-| **CV Personalizer** | Pydantic AI Agent | Structured JSON generation |
-| **Email Finder** | Pydantic AI Agent with tools | Multi-step reasoning, fallbacks |
-| **Cover Letter** | Pydantic AI Agent | System prompt enforcement |
-| **Gmail Draft** | Deterministic API call | No LLM needed |
-        )
-        
-        results = []
-        for job in new_jobs[:config.search.count]:
-            result = await process_job(job)
-            results.append(result)
-            progress.advance(task)
-    
-    errors = [r for r in results if r is not None]
-    
-    summary = RunSummary(
-        started_at=started_at,
-        finished_at=datetime.now().isoformat(),
-        jobs_found=len(jobs),
-        jobs_filtered=len(rejected),
-        jobs_qualified=len(qualifying),
-        drafts_created=len(new_jobs) - len(errors),
-        errors=errors
-    )
-    
-    save_json("data/run_summary.json", summary.model_dump())
-    return summary
-```
-    
-    for job in qualifying[:config.search.count]:
-        try:
-            # Personalize CV
-            cv_path = personalize_cv(cv_text, job)
-            
-            # Find email
-            email = find_email(job.company, job.hiring_manager)
-            
-            # Generate cover letter
-            letter = generate_cover_letter(job, cv_text)
-            
-            # Create draft
-            draft_id = create_draft(
-                to=email,
-                subject=f"Application for {job.title}",
-                body=letter,
-                attachment_path=cv_path,
-                credentials=get_gmail_credentials()
-            )
-            
+        drafts_created = 0
+        for job in qualifying[:config.search.count]:
+            draft_id = await create_draft(...)
             drafts_created += 1
-            
-        except Exception as e:
-            errors.append(f"{job.id}: {str(e)}")
+        
+        if tracker:
+            tracker.mark_applied(job_url=job.url, company=job.company, ...)
+        
+        print(f"Step 6: {drafts_created} Gmail drafts created")
     
-    finished_at = datetime.now().isoformat()
-    
-    summary = RunSummary(
-        started_at=started_at,
-        finished_at=finished_at,
-        jobs_found=len(jobs),
-        jobs_filtered=len(rejected),
-        jobs_qualified=len(qualifying),
-        drafts_created=drafts_created,
-        errors=errors
-    )
-    
-    save_json("data/run_summary.json", summary.model_dump())
+    # Save run summary
+    summary = RunSummary(...)
+    save_json(DATA_DIR / "run_summary.json", summary.model_dump())
     return summary
 ```
+
+---
 
 ## Database Schema – Physical Design
 
@@ -906,57 +938,17 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
 | `data/cvs/{job_id}/personalized_cv.pdf` | PDF | Generated CV PDF |
 | `data/cvs/{job_id}/email.json` | JSON | Composed email (to, subject, body) |
 | `data/cvs/{job_id}/job_info.json` | JSON | Job details for reference |
+| `data/processed_jobs.json` | JSON | Applied jobs (deduplication) |
 | `data/drafts/{draft_id}.json` | JSON | Gmail draft metadata |
 | `data/run_summary.json` | JSON | Run metrics |
 | `data/gmail_token.json` | JSON | OAuth cache (gitignored) |
 
-## Detailed Logic & Algorithms
+---
 
-### Job Filtering Algorithm
-
-```python
-async def filter_jobs(jobs: list[Job], cv_text: str) -> tuple[list[Job], list[Job]]:
-    """
-    Filter jobs using LLM evaluation.
-    
-    Criteria:
-    1. Candidate qualifications match job requirements
-    2. Job is accepting applications
-    
-    For each job:
-    1. Construct prompt with CV + job details
-    2. Call LLM to evaluate
-    3. Parse response (YES/YES = qualify)
-    4. If NO to either: add to rejected with reason
-    5. If YES to both: add to qualifying
-    """
-    qualifying = []
-    rejected = []
-    
-    for job in jobs:
-        # Skip if definitely not accepting
-        if job.accepting_applications is False:
-            rejected.append(job)
-            continue
-        
-        # Use LLM for qualified check
-        reason = await evaluate_job(job, cv_text)
-        
-        if reason is None:
-            qualifying.append(job)
-        else:
-            job.rejection_reason = reason
-            rejected.append(job)
-    
-    return qualifying, rejected
-```
-
-## Sequence Diagrams
-
-### Main Pipeline Sequence
+## Sequence Diagram
 
 ```
-┌─────────┐     ┌──────────┐    ┌─────────┐    ┌──────��─┐
+┌─────────┐     ┌──────────┐    ┌─────────┐    ┌───────┐
 │ Orchestr │     │CV Parser │    │Scraper  │    │ Filter │
 └────┬────┘     └────┬─────┘    └────┬────┘    └───┬────┘
      │                │               │              │
@@ -969,7 +961,7 @@ async def filter_jobs(jobs: list[Job], cv_text: str) -> tuple[list[Job], list[Jo
      │   cv_text      │              │              │
      │<<─────────────│              │              │
      │               │              │              │
-     │ scrape_jobs()   │              │              │
+     │ scrape_jobs() │              │              │
      │───────────────────────────────────────>>│
      │               │              │              │
      │      list[jobs]              │              │
@@ -994,12 +986,12 @@ async def filter_jobs(jobs: list[Job], cv_text: str) -> tuple[list[Job], list[Jo
      │    │               │              │              │
      │    │      email                          │              │
      │    │<<─────────────────────────────────────│
-     │    │               │              │              │
-     │    │ generate_cover_letter()             │              │
+     │    │               ��              │              │
+     │    │ compose_email()             │              │
      │    │───────────────────────────────────────>>│
      │    │               │              │              │
-     │    │      letter                         │              │
-     │    │<<─────────────────────────────────────│
+     │    │      email body                    │              │
+     │    │<<────────────────────────────────────│
      │    │               │              │              │
      │    │ create_draft() │              │              │
      │    │────────────────────────────────────────>>│
@@ -1011,6 +1003,8 @@ async def filter_jobs(jobs: list[Job], cv_text: str) -> tuple[list[Job], list[Jo
      │────────────────────────────────────────>>│
 ```
 
+---
+
 ## API Interface Definitions
 
 ### Config API
@@ -1018,13 +1012,6 @@ async def filter_jobs(jobs: list[Job], cv_text: str) -> tuple[list[Job], list[Jo
 ```python
 def load_config() -> Config:
     """Load config.yaml"""
-    pass
-
-def validate_config(config: Config) -> list[str]:
-    """Validate config.
-    
-    Returns list of validation errors (empty if valid).
-    """
     pass
 ```
 
@@ -1050,12 +1037,13 @@ def parse_cv(path: str) -> str:
 ### Scraper API
 
 ```python
-def scrape_jobs(urls: list[str], config: Config) -> list[Job]:
+async def scrape_jobs(urls: list[str], apify_config: ApifyConfig, count: int) -> list[Job]:
     """Scrape jobs from URLs.
     
     Args:
         urls: List of job search URLs
         config: Config with API keys
+        count: Max jobs to retrieve
     
     Returns:
         List of Job objects
@@ -1069,7 +1057,7 @@ def scrape_jobs(urls: list[str], config: Config) -> list[Job]:
 ### Filter API
 
 ```python
-async def filter_jobs(jobs: list[Job], cv_text: str) -> tuple[list[Job], list[Job]]:
+async def filter_jobs(jobs: list[Job], cv_text: str, ...) -> tuple[list[Job], list[Job]]:
     """Filter jobs by qualification and accepting status.
     
     Args:
@@ -1085,15 +1073,48 @@ async def filter_jobs(jobs: list[Job], cv_text: str) -> tuple[list[Job], list[Jo
 ### Email Finder API
 
 ```python
-def find_email(company: str, hiring_manager: Optional[str] = None) -> str:
+async def find_email_for_job(job: Job, api_key: str, ...) -> dict:
     """Find hiring manager email.
     
     Args:
-        company: Company name
-        hiring_manager: Optional hiring manager name
+        job: Job with company info
+        api_key: AnyMailFinder API key
     
     Returns:
-        Email address or empty string if not found
+        Dict with email and status
+    """
+    pass
+```
+
+### CV Personalizer API
+
+```python
+async def personalize_cv(cv_text: str, job: Job, ...) -> Path:
+    """Generate personalized CV for a job.
+    
+    Args:
+        cv_text: Parsed CV text
+        job: Job to personalize for
+    
+    Returns:
+        Path to generated PDF
+    """
+    pass
+```
+
+### Email Composer API
+
+```python
+def compose_email(job: Job, cv_text: str, cv_data: dict = None, to_email: str = None) -> dict:
+    """Compose application email.
+    
+    Args:
+        job: Job listing
+        cv_text: Parsed CV text
+        cv_data: Personalized CV data
+    
+    Returns:
+        Dict with to, cc, subject, body
     """
     pass
 ```
@@ -1101,12 +1122,12 @@ def find_email(company: str, hiring_manager: Optional[str] = None) -> str:
 ### Gmail Draft API
 
 ```python
-def create_draft(
+async def create_draft(
     to: str,
     subject: str,
     body: str,
     attachment_path: Path,
-    credentials: Credentials
+    credentials_path: str = "credentials.json"
 ) -> str:
     """Create Gmail draft.
     
@@ -1115,13 +1136,15 @@ def create_draft(
         subject: Email subject
         body: Email body
         attachment_path: Path to PDF attachment
-        credentials: Gmail OAuth credentials
+        credentials_path: Path to Gmail OAuth credentials
     
     Returns:
-        Draft ID
+        Draft ID or error message
     """
     pass
 ```
+
+---
 
 ## State Management & Data Persistence
 
@@ -1134,16 +1157,18 @@ def create_draft(
 | Jobs | In-memory | `data/apify_results.json` |
 | Filtered jobs | In-memory | `data/filtered_jobs.json` |
 | Generated CVs | Files | `data/cvs/*.pdf` |
-| Found emails | Files | `data/emails/*.json` |
-| Cover letters | Files | `data/cover_letters/*.txt` |
+| Found emails | Files | `data/emails.json` |
+| Processed jobs | Files | `data/processed_jobs.json` |
 | Gmail drafts | API | Not stored locally |
 | Run summary | Files | `data/run_summary.json` |
 
-### No Caching
+### Caching Logic
 
-- Each run is independent
-- No state carried between runs
-- Previous data overwritten on re-run
+- Each run is independent (unless --cached is used)
+- Previous data can be overwritten using --force
+- Can resume from specific step using --step N
+
+---
 
 ## Unit Testing Strategy
 
@@ -1155,7 +1180,7 @@ def create_draft(
 | `cv_parser.py` | Parsing | PDF, TXT, invalid format |
 | `filter.py` | Filtering | qualification match, not accepting |
 | `email_finder.py` | Response parsing | Valid response, empty, invalid JSON |
-| `cover_letter.py` | Prompt construction | Empty job, missing fields |
+| `email_composer.py` | Template construction | Empty job, missing fields |
 
 ### Example Test Cases
 
@@ -1201,9 +1226,9 @@ def test_filter_qualification_mismatch():
 | Apify API | `httpx-mock` |
 | AnyMailFinder | `httpx-mock` |
 | Gmail API | `google-api-mock` |
-| OpenAI (LLM) | `openai-mock` |
+| Ollama/OpenAI | Mock response |
 
 ### Coverage Target
 
-- Unit tests: ≥80% for logic (filter.py, config.py)
+- Unit tests: ≥80% for logic modules (filter.py, config.py)
 - Integration tests: Skip (require API keys)
