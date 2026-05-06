@@ -2,20 +2,18 @@
 
 ## System Architecture
 
-- **Pattern:** Single orchestrator agent (Pydantic AI) with modular tool handlers
-- **Rationale:** Pydantic AI provides built-in agent orchestration with type-safe tools; replaces complex n8n JSON logic
-- **Flow:** Config → CV Parse → Scrape → Filter → Personalize → Email → Draft → Gmail
+- **Pattern:** Deterministic Python async pipeline with LLM-powered tools
+- **Rationale:** Simple, controllable pipeline that doesn't require complex agent orchestration
+- **Flow:** Config → CV Parse → Scrape → Filter → Personalize → Email → Draft
 
 ## Technology Stack
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
 | Runtime | Python | 3.11+ |
-| Agent Framework | Pydantic AI | Latest |
 | HTTP Client | httpx | Latest |
 | CV Parsing | pdfplumber | Latest |
-| YAML Config | pydantic-settings + pyyaml | Latest |
-| Logging | structlog | Latest |
+| YAML Config | pydantic + pyyaml | Latest |
 | PDF Generation | weasyprint + Jinja2 | Latest |
 
 ## Data Design & Schema
@@ -92,20 +90,22 @@ class Job(BaseModel):
 ### Directory Structure
 
 ```
+src/
 ├── app/
 │   ├── __main__.py
 │   ├── config.py
 │   ├── models.py
-│   ├── tools/
-│   │   ├── cv_parser.py
-│   │   ├── scraper.py
-│   │   ├── filter.py
-│   │   ├── cv_personalizer.py
-│   │   ├── email_finder.py
-│   │   ├── cover_letter.py
-│   │   └── gmail_draft.py
 │   ├── agent.py
-│   └── logging.py
+│   ├── utils.py
+│   └── tools/
+│       ├── cv_parser.py
+│       ├── scraper.py
+│       ├── filter.py
+│       ├── cv_personalizer.py
+│       ├── email_finder.py
+│       ├── email_composer.py
+│       ├── gmail_draft.py
+│       └── applied_tracker.py
 ├── config.yaml
 ├── pyproject.toml
 └── data/  # created at runtime
@@ -140,6 +140,40 @@ api_keys:
 
 Each step logs progress and stores data locally:
 
+```
+config.yaml → Load & Validate
+     ↓ Log: "Config loaded successfully"
+     ↓ Store: None
+     ↓
+Base CV (PDF/TXT) → Parse
+     ↓ Log: "CV parsed: X characters"
+     ↓ Store: data/cv_parsed.json
+     ↓
+Job URLs → Apify scraper → Job listings
+     ↓ Log: "Scraped X jobs from Y URLs"
+     ↓ Store: data/apify_results.json
+     ↓
+Filter (qualification mismatch + not accepting applications) → Qualifying jobs
+     ↓ Log: "Filtered X jobs (Y qualified)"
+     ↓ Store: data/filtered_jobs.json, data/filtered_out_jobs.json
+     ↓
+For each job:
+   → Personalize CV (LLM)
+      ↓ Log: "CV personalized for [job_title]"
+      ↓ Store: data/cvs/{job_id}/personalized_cv.pdf
+   → Find email (AnyMailFinder)
+      ↓ Log: "Email found: [email]"
+      ↓ Store: data/emails.json
+   → Compose application email
+      ↓ Log: "Email composed"
+      ↓ Store: data/cvs/{job_id}/email.json
+   → Create Gmail draft
+      ↓ Log: "Draft created: [draft_id]"
+      ↓ Store: data/drafts/{job_id}.json
+      ↓
+Summary logs
+     ↓ Log: "Run complete: X drafts created, Y errors"
+     ↓ Store: data/run_summary.json
 ```
 config.yaml → Load & Validate
      ↓ Log: "Config loaded successfully"
@@ -182,21 +216,22 @@ Summary logs
 
 ```
 data/
-├── config_loaded.json        # Config used
 ├── cv_parsed.json         # Parsed CV text (Step 1)
 ├── apify_results.json     # Raw job listings from Apify (Step 2)
 ├── filtered_jobs.json      # Jobs that passed filter (Step 3)
 ├── filtered_out_jobs.json # Jobs that failed filter (Step 3)
-├── processed_jobs.json   # Job IDs already processed (deduplication)
+├── emails.json           # Found emails (Step 5)
+├── processed_jobs.json   # Job IDs already applied (deduplication)
 ├── cvs/
-│   └── personalized_cv_{job_id}.pdf  # Step 4: CVs per job
-├── emails/
-│   └── {job_id}.json   # Step 5: Found emails
-├── cover_letters/
-│   └── {job_id}.txt   # Step 6: Cover letters
+│   └── {job_id}/
+│       ├── personalized_cv.pdf   # Personalized CV (Step 4)
+│       ├── personalized_cv.html # HTML template
+│       ├── email.json          # Composed email
+│       └── job_info.json      # Job details
 ├── drafts/
-│   └── {job_id}.json # Step 7: Gmail drafts
-└── run_summary.json   # Final summary
+│   └── {draft_id}.json # Gmail draft metadata
+├── gmail_token.json     # OAuth cache
+└── run_summary.json     # Final summary
 ```
 
 **Skip Detection Logic:**

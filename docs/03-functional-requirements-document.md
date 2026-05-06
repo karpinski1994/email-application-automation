@@ -53,10 +53,9 @@ The system automates job applications by reading a base CV, scraping job listing
 | 1 | Parse CV | CV file (PDF/TXT) | cv_text | data/cv_parsed.json |
 | 2 | Scrape Jobs | search URLs | list[Job] | data/apify_results.json |
 | 3 | Filter Jobs | jobs + cv_text | qualifying + rejected | data/filtered_jobs.json, data/filtered_out_jobs.json |
-| 4 | Personalize CV | job + cv_text | PDF | data/cvs/personalized_cv_{job_id}.pdf |
-| 5 | Find Email | company | email | data/emails/{job_id}.json |
-| 6 | Generate Cover Letter | job + cv_text | letter | data/cover_letters/{job_id}.txt |
-| 7 | Create Gmail Draft | email + letter + attachment | draft_id | data/drafts/{job_id}.json |
+| 4 | Personalize CV | job + cv_text | PDF | data/cvs/{job_id}/personalized_cv.pdf |
+| 5 | Find Email | company | email | data/emails.json |
+| 6 | Create Gmail Draft | email + letter + attachment | draft_id | data/cvs/{job_id}/email.json, data/drafts/{job_id}.json |
 
 ### Main Pipeline (with skip detection)
 
@@ -66,29 +65,29 @@ The system automates job applications by reading a base CV, scraping job listing
 3. Parse CV file → If data/cv_parsed.json exists: LOAD (skip step)
 4. For each URL in config.search.urls:
     5. Scrape job listings via Apify → If data/apify_results.json exists: LOAD (skip step)
-    6. For each job:
-       7. Filter: Compare candidate qualifications; check accepting status
-          → If data/filtered_jobs.json exists: LOAD (skip step)
-       8. If mismatch OR not accepting: skip job, continue
-       9. Else: proceed
-       10. Personalize CV (LLM) → If data/cvs/personalized_cv_{job_id}.pdf exists: SKIP
-       11. Find hiring manager email (AnyMailFinder) → If data/emails/{job_id}.json exists: SKIP
-       12. Generate cover letter (LLM) → If data/cover_letters/{job_id}.txt exists: SKIP
-       13. Create Gmail draft with CV attached → If data/drafts/{job_id}.json exists: SKIP
-       14. If search.count reached: break
-15. Log summary (jobs processed, drafts created, errors)
+    6. Filter: Compare candidate qualifications; check accepting status
+       → If data/filtered_jobs.json exists: LOAD (skip step)
+    7. If mismatch OR not accepting: skip job, continue
+    8. Else: proceed
+    9. Personalize CV (LLM) → If data/cvs/{job_id}/personalized_cv.pdf exists: SKIP
+    10. Find hiring manager email (AnyMailFinder) → If data/emails.json exists: SKIP
+    11. Compose application email → If data/cvs/{job_id}/email.json exists: SKIP
+    12. Create Gmail draft with CV attached → If data/drafts/{job_id}.json exists: SKIP
+    13. If search.count reached: break
+14. Log summary (jobs processed, drafts created, errors)
 ```
 
 ### CLI Flags
 
 | Flag | Description |
 |------|------------|
-| `--step N` | Start from step N (1-7) |
-| `--skip-steps N,M` | Skip steps N and M |
-| `--rerun` | Clear all intermediate data before running |
+| `--step N` | Start from step N (1-6) |
+| `--force` | Force rerun, ignore cache |
+| `--cached` | Use cached jobs only |
 | `--dry-run` | Don't call any external APIs (for testing) |
-| `--count N` | Limit jobs to process |
-| `--provider local|openai` | Choose LLM provider |
+| `--limit N` | Limit jobs to process |
+| `--filter-only` | Stop after filtering (step 3) |
+| `--include-applied` | Include already applied jobs |
 
 ## Data Requirements
 

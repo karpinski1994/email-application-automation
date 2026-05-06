@@ -7,8 +7,8 @@ This SRS defines the functional and non-functional requirements for an AI-driven
 
 ### Scope
 - Configuration via YAML file (`config.yaml`)
-- Deterministic Python async orchestrator with Pydantic AI agentic tools
-- Integration with Apify, AnyMailFinder, Gmail APIs
+- Deterministic Python async pipeline with LLM-powered tools
+- Integration with Apify, AnyMailFinder, Gmail, Ollama APIs
 - Output: Gmail drafts with personalized CV attached
 
 ### Definitions & Acronyms
@@ -18,8 +18,9 @@ This SRS defines the functional and non-functional requirements for an AI-driven
 | CV | Curriculum Vitae / resume document |
 | Apify | Web scraping platform |
 | AnyMailFinder | Email discovery API |
-| LLM | Large Language Model (GPT-4o) |
+| LLM | Large Language Model (Ollama or OpenAI) |
 | Draft | Gmail draft (not sent) |
+| Ollama | Local LLM runtime |
 
 ---
 
@@ -27,7 +28,7 @@ This SRS defines the functional and non-functional requirements for an AI-driven
 
 ### Product Perspective
 - Standalone Python CLI application
-- Orchestrated by deterministic Python async pipeline with Pydantic AI agentic tools
+- Orchestrated by deterministic Python async pipeline with LLM-powered tools
 - Runs locally or on server
 
 ### User Classes & Characteristics

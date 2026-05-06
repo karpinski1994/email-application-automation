@@ -2,7 +2,7 @@
 
 ## Project Overview (context & vision)
 
-A Python-based automation system that replaces a brittle n8n workflow with a type-safe, extensible codebase. The system orchestrates CV parsing, job scraping, email discovery, and Gmail draft creation—all via a Pydantic AI agent. Vision: enable solo job seekers to apply to 50 jobs/day without manual effort.
+A Python-based automation system that replaces a brittle n8n workflow with a type-safe, extensible codebase. The system orchestrates CV parsing, job scraping, email discovery, and Gmail draft creation—all via a deterministic Python async pipeline with LLM-powered tools. Vision: enable solo job seekers to apply to 50 jobs/day without manual effort.
 
 ## Business Objectives
 
@@ -38,7 +38,7 @@ A Python-based automation system that replaces a brittle n8n workflow with a typ
 5. System filters jobs candidate doesn't fit (qualification mismatch, no longer accepting applications)
 6. System creates personalized CV for each remaining job (tailor to job requirements, not complete rewrite)
 7. System finds emails via AnyMailFinder (or free fallback)
-8. Pydantic AI generates personalized draft
+8. System composes application email
 9. Gmail draft created with personalized CV attached
 10. Repeat up to 50x/day automatically
 
@@ -74,12 +74,11 @@ A Python-based automation system that replaces a brittle n8n workflow with a typ
 
 | Term | Definition |
 |------|------------|
-| Apify | Cloud platform for web scraping actors |
-| AnyMailFinder | Paid email discovery API service |
 | CV | Curriculum Vitae / resume document |
+| AnyMailFinder | Paid email discovery API service |
 | Free Fallback | Email discovery via DuckDuckGo + pattern guessing + MX verify (future) |
 | n8n | No-code workflow automation tool |
-| Pydantic AI | AI agent framework with type-safety |
+| LLM | Large Language Model (Ollama/OpenAI) for cognitive tasks |
 | Top-of-funnel | Early stage of job application (outreach) |
 
 ---

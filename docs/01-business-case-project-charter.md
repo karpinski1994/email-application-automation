@@ -3,7 +3,7 @@
 ## Part 1: Business Case (The Why)
 
 ### Executive Summary
-This project automates the top-of-funnel job application process by replacing a manual, repetitive workflow with an AI-driven system. Using a deterministic Python orchestrator with Pydantic AI agentic tools for cognitive tasks, the system reads a candidate's CV, scrapes job listings, discovers hiring manager contacts, and drafts personalized Gmail cover letters—enabling the user to scale from ~5 manual applications/day to 50 automated applications/day at zero cost.
+This project automates the top-of-funnel job application process by replacing a manual, repetitive workflow with an AI-driven system. Using a deterministic Python async pipeline with LLM-powered tools for cognitive tasks, the system reads a candidate's CV, scrapes job listings, discovers hiring manager contacts, and drafts personalized Gmail cover letters—enabling the user to scale from ~5 manual applications/day to 50 automated applications/day at zero cost.
 
 ### Problem Statement
 Applying to jobs manually is highly repetitive: searching listings, identifying relevant roles, finding decision-maker contacts, and writing tailored cover letters for each position. This process doesn't scale—a job seeker spending 30 minutes per application can realistically target 5-8 jobs/day. The bottleneck isn't effort; it's time. The current n8n workflow exists but is brittle (hardcoded config, no type safety, hard to extend).
@@ -45,7 +45,7 @@ Applying to jobs manually is highly repetitive: searching listings, identifying 
 - Hiring manager email discovery (AnyMailFinder API)
 - Gmail draft creation (Google Gmail API)
 - Config-driven (YAML) - no hardcoded values
-- Deterministic Python async orchestrator with Pydantic AI agentic tools
+- Deterministic Python async pipeline with LLM-powered tools
 - Logging after each step
 - Local storage for all intermediate data (debugging & reprocessing)
 
