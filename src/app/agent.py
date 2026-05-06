@@ -62,7 +62,7 @@ def validate_prerequisites(step: int) -> None:
             )
 
 
-async def run(config, force=False, step=1, dry_run=False, filter_only=False, explicit_step=False, include_applied=False):
+async def run(config, force=False, step=1, dry_run=False, filter_only=False, explicit_step=False, include_applied=False, cached=False):
     """Run the email application automation pipeline.
     
     Args:
@@ -73,6 +73,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False, exp
         filter_only: Stop after filtering (step 3)
         explicit_step: If True, run only the specified step and stop
         include_applied: If True, process jobs that were already applied to
+        cached: If True, use cached jobs instead of scraping fresh
     
     Returns:
         RunSummary with statistics
@@ -151,8 +152,8 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False, exp
     # Step 2: Load Jobs (from cache or scrape)
     jobs_path = DATA_DIR / "apify_results.json"
     if step <= 2:
-        if is_cached(jobs_path) and not force:
-            # Load from existing file — DO NOT overwrite
+        if is_cached(jobs_path) and cached:
+            # Load from existing file — only when --cached flag is used
             jobs = _load_jobs_from_apify_cache(jobs_path)
             print(f"Step 2: Loaded {len(jobs)} jobs from cache (skipping Apify call)")
             
@@ -221,7 +222,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False, exp
             
             if tracker:
                 original_count = len(jobs)
-                jobs = [j for j in jobs if not tracker.is_applied(j.id)]
+                jobs = [j for j in jobs if not tracker.is_applied(j.url)]
                 skipped_count = original_count - len(jobs)
                 if skipped_count > 0:
                     print(f"⏭️  Skipping {skipped_count} already-applied jobs")
@@ -386,7 +387,9 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False, exp
             drafts_created = 0
             for i, job in enumerate(qualifying[:config.search.count]):
                 try:
-                    job_dir = DATA_DIR / "cvs" / str(job.id)
+                    # Use sanitized URL as folder name for reliable tracking
+                    folder_name = job.url[:100].replace('https://', '').replace('http://', '').replace('/', '_').replace('?', '_').replace('&', '_').replace('=', '_').replace('-', '_')
+                    job_dir = DATA_DIR / "cvs" / folder_name
                     email_json_path = job_dir / "email.json"
                     pdf_path = job_dir / "personalized_cv.pdf"
 
@@ -418,7 +421,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False, exp
                         
                         if tracker:
                             tracker.mark_applied(
-                                job_id=job.id,
+                                job_url=job.url,
                                 company=job.company,
                                 draft_id=draft_id if draft_id and not draft_id.startswith("error:") else None,
                                 subject=email_data.get("subject", ""),

@@ -12,6 +12,7 @@ def main():
     parser = argparse.ArgumentParser(description="Email Application Automation")
     parser.add_argument("command", nargs="?", default="run", help="Command to run")
     parser.add_argument("--force", "-f", action="store_true", help="Force re-run, ignore cache")
+    parser.add_argument("--cached", action="store_true", help="Use cached jobs instead of scraping fresh")
     parser.add_argument("--step", "-s", type=int, default=None, help="Run specific step only (1=parse CV, 2=scrape, 3=filter, 4=find emails, 5=personalize CVs, 6=create Gmail drafts)")
     parser.add_argument("--dry-run", action="store_true", help="Dry run, don't call external APIs")
     parser.add_argument("--filter-only", action="store_true", help="Stop after filtering (step 3)")
@@ -44,7 +45,7 @@ def main():
             print(f"Step: {args.step}")
             print()
             
-            summary = asyncio.run(run(config, force=args.force, step=args.step, dry_run=args.dry_run, filter_only=args.filter_only, explicit_step=explicit_step, include_applied=args.include_applied))
+            summary = asyncio.run(run(config, force=args.force, step=args.step, dry_run=args.dry_run, filter_only=args.filter_only, explicit_step=explicit_step, include_applied=args.include_applied, cached=args.cached))
             
             # Show RUN COMPLETE summary only for full pipeline (not explicit single step)
             if not explicit_step:

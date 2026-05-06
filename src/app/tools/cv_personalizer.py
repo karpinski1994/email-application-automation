@@ -335,14 +335,16 @@ async def personalize_cv(cv_text: str, job: Job, force: bool = False, to_email: 
     Returns:
         Path to generated HTML file.
     """
-    job_dir = Path("data/cvs") / str(job.id)
+    # Use sanitized URL as folder name for reliable tracking
+    folder_name = job.url[:100].replace('https://', '').replace('http://', '').replace('/', '_').replace('?', '_').replace('&', '_').replace('=', '_').replace('-', '_')
+    job_dir = Path("data/cvs") / folder_name
     job_dir.mkdir(parents=True, exist_ok=True)
 
     output_path = job_dir / "personalized_cv.html"
     job_info_path = job_dir / "job_info.json"
 
     if output_path.exists() and not force:
-        logger.info(f"  Skipping {job.id} - HTML already exists")
+        logger.info(f"  Skipping {job.company} - CV already exists")
         return output_path
 
     logger.info(f"  Generating personalized CV for {job.title} at {job.company}...")
