@@ -11,6 +11,36 @@ from app.models import Job, RunSummary
 from app.utils import DATA_DIR, ensure_data_dir, is_cached, load_json, save_json
 
 
+def validate_prerequisites(step: int) -> None:
+    """Validate required cache files exist before running a step.
+    
+    Args:
+        step: The step number to run (1-6)
+        
+    Raises:
+        FileNotFoundError: If required cache files from previous steps are missing
+    """
+    prerequisites = {
+        2: [DATA_DIR / "cv_parsed.json"],
+        3: [DATA_DIR / "apify_results.json"],
+        4: [DATA_DIR / "filtered_jobs.json"],
+        5: [DATA_DIR / "filtered_jobs.json", DATA_DIR / "emails.json"],
+        6: [DATA_DIR / "filtered_jobs.json"],
+    }
+    
+    if step > 1 and step in prerequisites:
+        missing_files = []
+        for path in prerequisites[step]:
+            if not path.exists():
+                missing_files.append(path.name)
+        
+        if missing_files:
+            missing = ", ".join(missing_files)
+            raise FileNotFoundError(
+                f"Missing {missing}. Run --step {step - 1} first."
+            )
+
+
 async def run(config, force=False, step=1, dry_run=False, filter_only=False):
     """Run the email application automation pipeline.
     
@@ -39,6 +69,7 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
     if step <= 6:
         from app.tools.gmail_draft import create_draft
     ensure_data_dir()
+    validate_prerequisites(step)
     started_at = datetime.now().isoformat()
     errors = []
     
@@ -56,9 +87,12 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
             cv_text = load_json(cv_path).get("text", "")
         print(f"Step 1: CV parsed ({len(cv_text)} chars)")
     else:
-        # Starting from step > 1, load CV from cache
-        cv_text = load_json(cv_path).get("text", "")
-        print(f"Step 1: (skipped, loaded {len(cv_text)} chars from cache)")
+        if cv_path.exists():
+            cv_text = load_json(cv_path).get("text", "")
+            print(f"Step 1: (skipped, loaded {len(cv_text)} chars from cache)")
+        else:
+            cv_text = ""
+            print("Step 1: No cached CV found")
     
     # Step 2: Load Jobs (from cache or scrape)
     jobs_path = DATA_DIR / "apify_results.json"
