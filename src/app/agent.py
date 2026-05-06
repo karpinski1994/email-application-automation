@@ -165,16 +165,6 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
                 drafts_created=0,
                 errors=errors,
             )
-            finished_at = datetime.now().isoformat()
-            return RunSummary(
-                started_at=started_at,
-                finished_at=finished_at,
-                jobs_found=len(jobs),
-                jobs_filtered=0,
-                jobs_qualified=0,
-                drafts_created=0,
-                errors=errors,
-            )
     else:
         # Starting from step > 2, still need to load jobs for downstream steps
         if is_cached(jobs_path):
