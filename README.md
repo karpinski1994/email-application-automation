@@ -190,8 +190,16 @@ The pipeline uses OAuth2 to create Gmail drafts. This requires credentials from 
    - **App name**: Email Application Automation
    - **User support email**: Your Google account email
 4. Click **Save and Continue** through the remaining steps
+5. In OAuth consent screen, scroll down to **Test users**
+6. Click **Add users** and add your Google account email (required for draft creation to work)
 
-#### 4. Create OAuth Credentials
+#### 4. Add Scopes
+
+1. Go to [https://console.cloud.google.com/auth/scopes](https://console.cloud.google.com/auth/scopes)
+2. Click **Add or remove scopes**
+3. Check: `.../auth/gmail.compose` (See your emails and compose/send emails from your mailbox)
+
+#### 5. Create OAuth Credentials
 
 1. Go to **APIs & Services** → **Credentials**
 2. Click **Create Credentials** → **OAuth client ID**
@@ -200,7 +208,7 @@ The pipeline uses OAuth2 to create Gmail drafts. This requires credentials from 
 5. Click **Create**
 6. Click **Download JSON** next to your new credentials
 
-#### 5. Place Credentials
+#### 6. Place Credentials
 
 1. Rename the downloaded file to `credentials.json`
 2. Place it in the project root directory (same level as `config.yaml`)
