@@ -310,120 +310,114 @@ The template uses these Jinja2 variables:
 
 ## 🚀 Running the Pipeline
 
-### Virtual Environment & PYTHONPATH
-
-If you're using a virtual environment, activate it first and set PYTHONPATH:
+### Full Pipeline (All Steps 1-6)
 
 ```bash
-# Activate virtual environment
-source .venv/bin/activate
-
-# Run with PYTHONPATH set
-PYTHONPATH=src python3 -m app run --step=6 --force
+source .venv/bin/activate && PYTHONPATH=src python3 -m app
 ```
 
-Or in one line:
-```bash
-PYTHONPATH=src python3 -m app run
-```
-
-The `PYTHONPATH=src` is needed because the app imports from `src/app/`, so Python needs to know where to find the `app` module.
-
-### Full Pipeline
-
-```bash
-python -m app
-```
-
-### Run Individual Steps
-
-Use `--step N` to start from a specific step:
-
-| Step | Command | Description |
-|------|---------|--------------|
-| 1 | `python -m app --step 1` | Parse CV only |
-| 2 | `python -m app --step 2` | Scrape jobs (uses cached CV) |
-| 3 | `python -m app --step 3` | Filter jobs |
-| 4 | `python -m app --step 4` | Find emails |
-| 5 | `python -m app --step 5` | Personalize CVs |
-| 6 | `python -m app --step 6` | Create Gmail drafts |
+Runs all steps sequentially: Parse CV → Scrape Jobs → Filter Jobs → Find Emails → Personalize CVs → Create Gmail Drafts.
 
 ### Useful Options
 
 ```bash
 # Dry run (skip external API calls)
-python -m app --dry-run
+source .venv/bin/activate && PYTHONPATH=src python3 -m app --dry-run
 
-# Force re-run (ignore cache)
-python -m app --force
+# Force re-run (ignore cache and redo everything)
+source .venv/bin/activate && PYTHONPATH=src python3 -m app --force
 
-# Filter only (stop after step 3)
-python -m app --step 3 --filter-only
+# Run specific step only
+source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 3
 
 # Limit number of jobs for testing
-python -m app --limit 10
+source .venv/bin/activate && PYTHONPATH=src python3 -m app --limit 10
 
 # Custom config file
-python -m app --config my_config.yaml
+source .venv/bin/activate && PYTHONPATH=src python3 -m app --config my_config.yaml
 ```
+
+### Run Individual Steps
+
+Each step runs in isolation — it loads cached data from previous steps automatically.
+
+**Why this format?**
+- `source .venv/bin/activate` — Activates your Python virtual environment (or use your specific venv path)
+- `PYTHONPATH=src` — Tells Python where to find the `app` module (the code imports from `src/app/`)
+- `--step N` — Runs ONLY that step and stops (doesn't run subsequent steps)
+
+| Step | Command | Output File |
+|------|---------|-------------|
+| 1 | `source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 1` | `data/cv_parsed.json` |
+| 2 | `source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 2` | `data/apify_results.json` |
+| 3 | `source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 3` | `data/filtered_jobs.json` |
+| 4 | `source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 4` | `data/emails.json` |
+| 5 | `source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 5` | `data/cvs/{job_id}/personalized_cv.pdf` |
+| 6 | `source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 6` | Gmail drafts (check your Drafts folder) |
 
 ### Step-by-Step Workflow
 
 #### Step 1: Parse Your CV
 
 ```bash
-python -m app --step 1
+source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 1
 ```
 
 - Input: `my_cv.pdf` (or configured path)
 - Output: `data/cv_parsed.json`
+- What it does: Extracts text from your CV PDF/TXT file
 
 #### Step 2: Scrape Jobs
 
 ```bash
-python -m app --step 2
+source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 2
 ```
 
-- Input: LinkedIn URLs from config
+- Input: LinkedIn URLs from config (`config.yaml`)
 - Output: `data/apify_results.json`
+- What it does: Fetches job listings from LinkedIn via Apify API
 
 #### Step 3: Filter Jobs
 
 ```bash
-python -m app --step 3
+source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 3
 ```
 
-- Uses two-stage filtering:
-  1. **Embedding-based**: Fast similarity matching
-  2. **LLM-based**: Detailed relevance scoring
+- Input: `data/apify_results.json`, `data/cv_parsed.json`
 - Output: `data/filtered_jobs.json`
+- What it does: Uses two-stage filtering:
+  1. **Embedding-based**: Fast similarity matching (nomic-embed-text)
+  2. **LLM-based**: Detailed relevance scoring (llama3.2)
 
 #### Step 4: Find Emails
 
 ```bash
-python -m app --step 4
+source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 4
 ```
 
-- Queries AnyMailFinder API for each company
+- Input: `data/filtered_jobs.json`
 - Output: `data/emails.json`
+- What it does: Finds hiring manager emails via AnyMailFinder API (or DuckDuckGo fallback)
 
 #### Step 5: Personalize CVs
 
 ```bash
-python -m app --step 5
+source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 5
 ```
 
-- Generates individualized CVs for each qualifying job
-- Uses LLM to tailor content to job requirements
+- Input: `data/filtered_jobs.json`, `data/cv_parsed.json`, `data/emails.json`
 - Output: `data/cvs/{job_id}/personalized_cv.pdf`
+- What it does: Generates individualized CVs for each qualifying job using LLM to tailor content
 
 #### Step 6: Create Gmail Drafts
 
 ```bash
-python -m app --step 6
+source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 6
 ```
 
-- Creates drafts in your Gmail with:
+- Input: `data/cvs/{job_id}/email.json`, `data/cvs/{job_id}/personalized_cv.pdf`
+- Output: Gmail Drafts folder
+- What it does: Creates drafts in your Gmail with:
   - Personalized email body
   - Tailored CV as PDF attachment
 - Output: Drafts appear in your Gmail "Drafts" folder
