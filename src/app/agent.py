@@ -86,6 +86,26 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
         else:
             cv_text = load_json(cv_path).get("text", "")
         print(f"Step 1: CV parsed ({len(cv_text)} chars)")
+        
+        if step == 1:
+            finished_at = datetime.now().isoformat()
+            print()
+            print("=" * 50)
+            print("STEP 1 COMPLETE: CV Parsed")
+            print("=" * 50)
+            print(f"CV text: {len(cv_text)} characters")
+            print(f"Output: data/cv_parsed.json")
+            print()
+            print("Next: Run --step 2 to scrape jobs from LinkedIn")
+            return RunSummary(
+                started_at=started_at,
+                finished_at=finished_at,
+                jobs_found=0,
+                jobs_filtered=0,
+                jobs_qualified=0,
+                drafts_created=0,
+                errors=errors,
+            )
     else:
         if cv_path.exists():
             cv_text = load_json(cv_path).get("text", "")
@@ -101,10 +121,60 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
             # Load from existing file — DO NOT overwrite
             jobs = _load_jobs_from_apify_cache(jobs_path)
             print(f"Step 2: Loaded {len(jobs)} jobs from cache (skipping Apify call)")
+            
+            if step == 2:
+                finished_at = datetime.now().isoformat()
+                print()
+                print("=" * 50)
+                print("STEP 2 COMPLETE: Jobs Scraped")
+                print("=" * 50)
+                print(f"Jobs found: {len(jobs)}")
+                print(f"Output: data/apify_results.json")
+                print()
+                print("Next: Run --step 3 to filter jobs by CV match")
+                return RunSummary(
+                    started_at=started_at,
+                    finished_at=finished_at,
+                    jobs_found=len(jobs),
+                    jobs_filtered=0,
+                    jobs_qualified=0,
+                    drafts_created=0,
+                    errors=errors,
+                )
         else:
             jobs = await scrape_jobs(config.search.urls, config.apify, config.search.count)
             save_json(jobs_path, [j.model_dump() for j in jobs])
             print(f"Step 2: Scraped {len(jobs)} jobs")
+        
+        if step == 2:
+            finished_at = datetime.now().isoformat()
+            print()
+            print("=" * 50)
+            print("STEP 2 COMPLETE: Jobs Scraped")
+            print("=" * 50)
+            print(f"Jobs found: {len(jobs)}")
+            print(f"Output: data/apify_results.json")
+            print()
+            print("Next: Run --step 3 to filter jobs by CV match")
+            return RunSummary(
+                started_at=started_at,
+                finished_at=finished_at,
+                jobs_found=len(jobs),
+                jobs_filtered=0,
+                jobs_qualified=0,
+                drafts_created=0,
+                errors=errors,
+            )
+            finished_at = datetime.now().isoformat()
+            return RunSummary(
+                started_at=started_at,
+                finished_at=finished_at,
+                jobs_found=len(jobs),
+                jobs_filtered=0,
+                jobs_qualified=0,
+                drafts_created=0,
+                errors=errors,
+            )
     else:
         # Starting from step > 2, still need to load jobs for downstream steps
         if is_cached(jobs_path):
@@ -140,6 +210,28 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
             qualifying_data = load_json(filtered_path)
             qualifying = [Job(**j) for j in qualifying_data]
         print(f"Step 3: {len(qualifying)} jobs qualified")
+        
+        if step == 3:
+            finished_at = datetime.now().isoformat()
+            print()
+            print("=" * 50)
+            print("STEP 3 COMPLETE: Jobs Filtered")
+            print("=" * 50)
+            print(f"Jobs found: {len(jobs) if jobs else 0}")
+            print(f"Jobs qualified: {len(qualifying)}")
+            print(f"Jobs filtered: {(len(jobs) - len(qualifying)) if jobs and qualifying else 0}")
+            print(f"Output: data/filtered_jobs.json")
+            print()
+            print("Next: Run --step 4 to find hiring manager emails")
+            return RunSummary(
+                started_at=started_at,
+                finished_at=finished_at,
+                jobs_found=len(jobs) if jobs else 0,
+                jobs_filtered=len(jobs) - len(qualifying) if jobs and qualifying else 0,
+                jobs_qualified=len(qualifying),
+                drafts_created=0,
+                errors=errors,
+            )
     
     # Early return if filter-only mode
     if filter_only:
@@ -183,6 +275,15 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
         
         if step == 4:
             finished_at = datetime.now().isoformat()
+            print()
+            print("=" * 50)
+            print("STEP 4 COMPLETE: Emails Found")
+            print("=" * 50)
+            print(f"Jobs processed: {len(qualifying)}")
+            print(f"Valid emails: {valid_count}, Risky: {risky_count}, Not found: {not_found_count}")
+            print(f"Output: data/emails.json")
+            print()
+            print("Next: Run --step 5 to personalize CVs")
             return RunSummary(
                 started_at=started_at,
                 finished_at=finished_at,
@@ -211,6 +312,14 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
         
         if step == 5:
             finished_at = datetime.now().isoformat()
+            print()
+            print("=" * 50)
+            print("STEP 5 COMPLETE: CVs Personalized")
+            print("=" * 50)
+            print(f"CVs generated: {len(pdf_paths)}")
+            print(f"Output: data/cvs/{job_id}/personalized_cv.pdf")
+            print()
+            print("Next: Run --step 6 to create Gmail drafts")
             return RunSummary(
                 started_at=started_at,
                 finished_at=finished_at,
@@ -263,20 +372,31 @@ async def run(config, force=False, step=1, dry_run=False, filter_only=False):
                     errors.append(f"{job.id}: {str(e)}")
 
             print(f"Step 6: {drafts_created} Gmail drafts created")
+        
+            if step == 6:
+                finished_at = datetime.now().isoformat()
+                print()
+                print("=" * 50)
+                print("STEP 6 COMPLETE: Gmail Drafts Created")
+                print("=" * 50)
+                print(f"Drafts created: {drafts_created}")
+                print(f"Output: Check your Gmail Drafts folder")
+                print()
+                if errors:
+                    print(f"Warnings: {len(errors)}")
+                    for e in errors[:3]:
+                        print(f"  - {e}")
+                return RunSummary(
+                    started_at=started_at,
+                    finished_at=finished_at,
+                    jobs_found=len(jobs) if 'jobs' in dir() else 0,
+                    jobs_filtered=0,
+                    jobs_qualified=len(qualifying),
+                    drafts_created=drafts_created,
+                    errors=errors,
+                )
         else:
             print("Step 6: No qualifying jobs to create drafts for")
-
-        if step == 6:
-            finished_at = datetime.now().isoformat()
-            return RunSummary(
-                started_at=started_at,
-                finished_at=finished_at,
-                jobs_found=len(jobs) if 'jobs' in dir() else 0,
-                jobs_filtered=0,
-                jobs_qualified=len(qualifying),
-                drafts_created=drafts_created,
-                errors=errors,
-            )
     
     finished_at = datetime.now().isoformat()
     
