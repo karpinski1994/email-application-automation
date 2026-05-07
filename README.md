@@ -50,7 +50,7 @@ graph TD
 
 | Requirement | Description |
 |-------------|--------------|
-| **Python** | 3.11 or higher |
+| **Python** | 3.14.4 |
 | **Ollama** | For local LLM (optional, can use OpenAI) |
 | **Google Cloud Account** | For Gmail API OAuth2 |
 | **Apify Account** | For LinkedIn job scraping |
@@ -96,8 +96,20 @@ llm:
 ### Install Dependencies
 
 ```bash
+# Create virtual environment
+python3 -m venv .venv
+
+# Activate environment
+source .venv/bin/activate
+
+# Install dependencies
 pip install -e .
 ```
+
+> **Note:** Always activate the environment before running the pipeline:
+> ```bash
+> source .venv/bin/activate
+> ```
 
 ---
 
@@ -136,7 +148,10 @@ filter:
   embedding_shortlist_size: 50
   llm_fit_threshold: 20
   embedding_model: "nomic-embed-text"
-  scoring_model: "llama3.2"
+  scoring_model: "llama3.2:3b"
+```
+
+> **⚠️ Mac Users:** On some Mac machines, model names must be exact (e.g., `llama3.2:3b` instead of `llama3.2`). If you get model not found errors, make sure to include the tag suffix.
 
 # Email finder
 email_finder:
