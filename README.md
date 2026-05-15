@@ -298,10 +298,12 @@ This is common when:
 
 Before running, replace the example data with your own:
 
-### 1. Update `my_cv.pdf` (or `cv.txt`)
-Place your CV in the project root as `my_cv.pdf` (or `cv.txt` for text format):
-- Name, title, location, phone, email, LinkedIn
-- Your experience, skills, education
+### 1. Your CV File
+Place your own CV in the project root. Two formats supported:
+- **PDF**: `my_cv.pdf` (recommended - more professional)
+- **TXT**: `cv.txt` (plain text, easier to edit)
+
+The pipeline reads whichever file path you configure in `config.yaml`.
 
 ### 2. Update `config.yaml`
 ```yaml
