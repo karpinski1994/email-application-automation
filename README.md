@@ -298,15 +298,15 @@ This is common when:
 
 Before running, replace the example data with your own:
 
-### 1. Update `cv.txt` (Primary)
-Edit `cv.txt` with your personal information:
+### 1. Update `my_cv.pdf` (or `cv.txt`)
+Place your CV in the project root as `my_cv.pdf` (or `cv.txt` for text format):
 - Name, title, location, phone, email, LinkedIn
 - Your experience, skills, education
 
 ### 2. Update `config.yaml`
 ```yaml
 cv:
-  path: "./cv.txt"  # or "./my_cv.pdf" if using PDF
+  path: "./my_cv.pdf"  # or "./cv.txt" if using text format
 ```
 
 ### 3. Update `src/app/tools/email_composer.py`
