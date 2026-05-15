@@ -50,7 +50,9 @@ graph TD
 
 | Requirement | Description |
 |-------------|--------------|
-| **Python** | 3.14.4 |
+| **Python** | 3.14.4 (or 3.11+) - [Download](https://www.python.org/downloads/) |
+
+> **Windows Users:** Install Python from python.org, check "Add Python to PATH" during installation. For WeasyPrint, see [Windows PDF Rendering](#windows-pdf-rendering) below.
 | **Ollama** | For local LLM (optional, can use OpenAI) |
 | **Google Cloud Account** | For Gmail API OAuth2 |
 | **Apify Account** | For LinkedIn job scraping |
@@ -99,17 +101,16 @@ llm:
 # Create virtual environment
 python3 -m venv .venv
 
-# Activate environment
-source .venv/bin/activate
-
 # Install dependencies
 pip install -e .
+
+# Activate environment
+source .venv/bin/activate  # macOS/Linux
+# .venv\Scripts\Activate.ps1  # Windows PowerShell
+# .venv\Scripts\activate.bat  # Windows CMD
 ```
 
-> **Note:** Always activate the environment before running the pipeline:
-> ```bash
-> source .venv/bin/activate
-> ```
+> **Note:** Always activate the environment before running the pipeline.
 
 ---
 
@@ -204,9 +205,7 @@ The pipeline uses OAuth2 to create Gmail drafts. This requires credentials from 
 3. Fill in:
    - **App name**: Email Application Automation
    - **User support email**: Your Google account email
-4. Click **Save and Continue** through the remaining steps
-5. In OAuth consent screen, scroll down to **Test users**
-6. Click **Add users** and add your Google account email (required for draft creation to work)
+4. Click **Save and Continue** through the remaining steps (you can skip Test users for now - we'll add them next)
 
 #### 4. Add Scopes
 
@@ -228,6 +227,15 @@ The pipeline uses OAuth2 to create Gmail drafts. This requires credentials from 
 1. Rename the downloaded file to `credentials.json`
 2. Place it in the project root directory (same level as `config.yaml`)
 3. The first time you run the pipeline, it will open a browser window for you to authorize
+
+#### 7. Add Test Users (Required)
+
+> ⚠️ **Important:** Without test users, OAuth will show "Verification required" and the app won't work. This is required even for your own Google account.
+
+1. Go to [https://console.cloud.google.com/auth/audience](https://console.cloud.google.com/auth/audience)
+2. Click **Add users**
+3. Enter your Google account email (e.g., `yourname@gmail.com`)
+4. Click **Save**
 
 ---
 
@@ -372,6 +380,25 @@ Each step runs in isolation — it loads cached data from previous steps automat
 | 4 | `source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 4` | `data/emails.json` |
 | 5 | `source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 5` | `data/cvs/{job_id}/personalized_cv.pdf` |
 | 6 | `source .venv/bin/activate && PYTHONPATH=src python3 -m app --step 6` | Gmail drafts (check your Drafts folder) |
+
+### Windows
+
+```powershell
+# Activate venv
+.venv\Scripts\Activate.ps1
+
+# Set PYTHONPATH and run
+$env:PYTHONPATH="src"
+python -m app
+
+# Or as one-liner
+.venv\Scripts\Activate.ps1; $env:PYTHONPATH="src"; python -m app
+
+# Individual steps (PowerShell)
+.venv\Scripts\Activate.ps1
+$env:PYTHONPATH="src"
+python -m app --step 1
+```
 
 ### Step-by-Step Workflow
 
@@ -602,6 +629,20 @@ filter:
 
 - Use smaller models: `qwen2.5:7b` or `llama3.2:3b`
 - Or switch to OpenAI for cloud processing
+
+### Windows PDF Rendering (WeasyPrint)
+
+WeasyPrint requires GTK runtime, which is not installed by default on Windows. Choose one of these options:
+
+**Option A: GTK Runtime (Recommended)**
+1. Download GTK3 runtime from: https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Archive
+2. Install `gtk3-runtime-3.24.XX-x64.exe`
+3. Restart your terminal and run the pipeline
+
+**Option B: MSYS2**
+1. Install [MSYS2](https://www.msys2.org/)
+2. In MSYS2 terminal: `pacman -S mingw-w64-x86_64-weasyprint`
+3. Use that Python environment instead
 
 ---
 
