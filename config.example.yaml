@@ -1,31 +1,60 @@
-# Example Configuration File
-# Copy this to config.yaml and fill in your actual values
+# Configuration for Email Application Automation
 
 # Job search configuration
 search:
   urls:
-    - "https://www.linkedin.com/jobs/search-results/?keywords=YOUR_KEYWORDS"
-    - "https://www.linkedin.com/jobs/search-results/?keywords=python%20developer"
-  count: 50
+    # Public LinkedIn job search URLs (must be from incognito/logged-out browser)
+    # Format: /jobs/search/?keywords=...&location=...
+    - "https://www.linkedin.com/jobs/search/?keywords=front-end%20developer&location=Latin%20America"
+    - "https://www.linkedin.com/jobs/search/?keywords=frontend%20developer%20remote&location=Latin%20America"
+    - "https://www.linkedin.com/jobs/search/?keywords=frontend%20developer&f_WT=2"
+  count: 10
 
 # CV file path (relative to project root)
 cv:
-  path: "./YOUR_CV.pdf"
+  path: "./cv.txt"
 
 # Gmail settings
 gmail:
-  draft_only: true  # Set to false to actually send emails (NOT RECOMMENDED)
+  draft_only: true
+  token_path: "data/gmail_token.json"
+  credentials_path: "gmail-credentials.json"
 
 # LLM Configuration
 llm:
-  provider: "local"  # Options: "local" (Ollama) or "openai"
-  model: "qwen2.5:7b"  # For local: qwen2.5:7b, llama3.2:3b, gemma2:9b
-  base_url: "http://localhost:11434/v1"  # For local Ollama
-  api_key: "ollama"  # Dummy for local; use OPENAI_API_KEY for openai
+  provider: "local"  # "local" (Ollama) or "openai"
+  model: "qwen2.5:7b"  # Local: qwen2.5:7b | OpenAI: gpt-4o-mini
+  base_url: "http://localhost:11434/v1"  # Local: http://localhost:11434/v1 | OpenAI: https://api.openai.com/v1
+  api_key: "ollama"  # Local: ollama | OpenAI: ${OPENAI_API_KEY}
+
+# Apify Configuration (for LinkedIn job scraping)
+# Set APIFY_API_KEY in .env file (see .env.example)
+apify:
+  api_token: "${APIFY_API_KEY}"
+  actor_id: "hKByXkMQaC5Qt9UMN"
 
 # Privacy settings
 privacy:
-  redact_pii: true  # Redact personal info before sending to LLM
+  redact_pii: true
+
+# Filter Configuration (two-stage: embedding + LLM)
+filter:
+  embedding_shortlist_size: 50   # How many jobs pass to LLM (increased for better coverage)
+  llm_fit_threshold: 20         # Minimum LLM score to qualify (lowered for frontend roles)
+  embedding_model: "nomic-embed-text"
+  scoring_model: "llama3.2"
+
+# Email Finder Configuration
+email_finder:
+  provider: "anymailfinder"
+  api_key: "${ANYMAILFINDER_API_KEY}"
+  categories:
+    - "engineering"
+    - "hr"
+    - "it"
+  max_domain_attempts: 3
+  fallback_enabled: true
+  fallback_max_attempts: 3
 
 # Dry run mode (for testing without API calls)
 dry_run: false
