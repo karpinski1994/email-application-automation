@@ -12,7 +12,7 @@ search:
 
 # CV file path (relative to project root)
 cv:
-  path: "./my_cv.pdf"
+  path: "./cv.txt"
 
 # Gmail settings
 gmail:
