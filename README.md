@@ -294,6 +294,37 @@ This is common when:
 
 ---
 
+## ⚙️ Personalize the Pipeline
+
+Before running, replace the example data with your own:
+
+### 1. Update `cv.txt` (Primary)
+Edit `cv.txt` with your personal information:
+- Name, title, location, phone, email, LinkedIn
+- Your experience, skills, education
+
+### 2. Update `config.yaml`
+```yaml
+cv:
+  path: "./cv.txt"  # or "./my_cv.pdf" if using PDF
+```
+
+### 3. Update `src/app/tools/email_composer.py`
+```python
+Line 7:  CANDIDATE_EMAIL = "your.email@gmail.com"
+Line 33: name = cv_data.get("name", "Your Name")
+Line 51: f"Best regards,\nYour Name"
+```
+
+### 4. Update `src/app/tools/filter.py` (Optional)
+The prompt examples reference "Jon Doe" - update for better example output:
+```python
+Line 103: CV: Your Name - Your Title, N+ years experience.
+Line 193: user_prompt = f"""CV: Your Name - Your Title, N+ years.
+```
+
+---
+
 ## 🎨 CV Template Personalization
 
 The CV template is located at `src/app/templates/cv_template.html`.
