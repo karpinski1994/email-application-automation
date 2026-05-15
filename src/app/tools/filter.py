@@ -100,7 +100,7 @@ def _stage1_embedding_filter(
 
 SYSTEM_PROMPT = """You are a technical recruiter. Score job-CV fit from 0-100.
 
-CV: Gabriel Menacho - Lead Full Stack Engineer, 12+ years experience.
+CV: Jon Doe - Lead Full Stack Engineer, 12+ years experience.
 Tech stack: React (8y), TypeScript (8y), Node.js, NestJS, GraphQL, Next.js.
 Seniority: Lead/Senior level. Location: Bolivia (open to remote/LATAM).
 
@@ -190,7 +190,7 @@ async def _score_single_job(
     seniority = item.get("seniorityLevel", "")
     desc = item.get("descriptionText") or item.get("descriptionHtml") or ""
     
-    user_prompt = f"""CV: Gabriel Menacho - Lead Full Stack Engineer, 12+ years.
+    user_prompt = f"""CV: Jon Doe - Lead Full Stack Engineer, 12+ years.
 Tech: React (8y), TypeScript (8y), Node.js, NestJS, GraphQL.
 Location: Bolivia (remote/LATAM ok).
 

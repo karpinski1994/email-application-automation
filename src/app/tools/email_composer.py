@@ -4,7 +4,7 @@ import re
 
 from app.models import Job
 
-CANDIDATE_EMAIL = "gabriel.menacho.silva@gmail.com"
+CANDIDATE_EMAIL = "jon.doe@gmail.com"
 
 
 def _extract_candidate_email(cv_text: str) -> str:
@@ -30,7 +30,7 @@ def compose_email(job: Job, cv_text: str, cv_data: dict = None, to_email: str = 
     candidate_email = _extract_candidate_email(cv_text)
 
     if cv_data:
-        name = cv_data.get("name", "Gabriel Menacho")
+        name = cv_data.get("name", "Jon Doe")
         summary = cv_data.get("tailored_summary") or cv_data.get("summary", "")
         skills = cv_data.get("tailored_skills") or cv_data.get("skills_flat") or cv_data.get("skills", "")
 
@@ -48,7 +48,7 @@ def compose_email(job: Job, cv_text: str, cv_data: dict = None, to_email: str = 
             f"Dear Hiring Team,\n\n"
             f"I am writing to express my interest in the {job.title} position at {job.company}. "
             f"Please find my CV attached for your review.\n\n"
-            f"Best regards,\nGabriel Menacho"
+            f"Best regards,\nJon Doe"
         )
 
     return {

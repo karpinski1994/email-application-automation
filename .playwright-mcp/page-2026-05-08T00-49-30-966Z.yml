@@ -1,0 +1,393 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Primary" [ref=e4]:
+    - link "LinkedIn":
+      - /url: /?trk=guest_homepage-basic_nav-header-logo
+      - generic [ref=e5] [cursor=pointer]: LinkedIn
+    - list [ref=e6]:
+      - listitem [ref=e7]:
+        - link "Top Content" [ref=e8] [cursor=pointer]:
+          - /url: https://www.linkedin.com/top-content?trk=guest_homepage-basic_guest_nav_menu_topContent
+          - generic [ref=e10]: Top Content
+      - listitem [ref=e11]:
+        - link "People" [ref=e12] [cursor=pointer]:
+          - /url: https://www.linkedin.com/pub/dir/+/+?trk=guest_homepage-basic_guest_nav_menu_people
+          - generic [ref=e14]: People
+      - listitem [ref=e15]:
+        - link "Learning" [ref=e16] [cursor=pointer]:
+          - /url: https://www.linkedin.com/learning/search?trk=guest_homepage-basic_guest_nav_menu_learning
+          - generic [ref=e18]: Learning
+      - listitem [ref=e19]:
+        - link "Jobs" [ref=e20] [cursor=pointer]:
+          - /url: https://www.linkedin.com/jobs/search?trk=guest_homepage-basic_guest_nav_menu_jobs
+          - generic [ref=e22]: Jobs
+      - listitem [ref=e23]:
+        - link "Games" [ref=e24] [cursor=pointer]:
+          - /url: https://www.linkedin.com/games?trk=guest_homepage-basic_guest_nav_menu_games
+          - generic [ref=e26]: Games
+    - generic [ref=e27]:
+      - link "Sign in" [ref=e28] [cursor=pointer]:
+        - /url: https://www.linkedin.com/login?fromSignIn=true&trk=guest_homepage-basic_nav-header-signin
+      - link "Join now" [ref=e29] [cursor=pointer]:
+        - /url: https://www.linkedin.com/signup?trk=guest_homepage-basic_nav-header-join
+  - main [ref=e30]:
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - heading "Welcome to your professional community" [level=1] [ref=e33]
+        - generic [ref=e34]:
+          - button "Continue with google" [ref=e36]:
+            - generic [ref=e37]:
+              - button "Continue with Google" [ref=e39] [cursor=pointer]:
+                - generic [ref=e41]:
+                  - img [ref=e44]
+                  - generic [ref=e51]: Continue with Google
+              - iframe
+          - link "Sign in with email" [ref=e52] [cursor=pointer]:
+            - /url: https://www.linkedin.com/login
+          - paragraph [ref=e53]:
+            - text: By clicking Continue to join or sign in, you agree to LinkedIn’s
+            - link "User Agreement" [ref=e54] [cursor=pointer]:
+              - /url: /legal/user-agreement?trk=linkedin-tc_auth-button_user-agreement
+            - text: ","
+            - link "Privacy Policy" [ref=e55] [cursor=pointer]:
+              - /url: /legal/privacy-policy?trk=linkedin-tc_auth-button_privacy-policy
+            - text: ", and"
+            - link "Cookie Policy" [ref=e56] [cursor=pointer]:
+              - /url: /legal/cookie-policy?trk=linkedin-tc_auth-button_cookie-policy
+            - text: .
+        - paragraph [ref=e57]:
+          - text: New to LinkedIn?
+          - link "Join now" [ref=e58] [cursor=pointer]:
+            - /url: https://www.linkedin.com/signup
+      - img "Welcome to your professional community" [ref=e59]
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - heading "Explore top LinkedIn content" [level=2] [ref=e62]
+        - paragraph [ref=e63]: Discover relevant posts and expert insights — curated by topic and in one place.
+      - generic [ref=e64]:
+        - list:
+          - listitem:
+            - link "Career" [ref=e65] [cursor=pointer]:
+              - /url: https://www.linkedin.com/top-content/career/
+          - listitem:
+            - link "Productivity" [ref=e66] [cursor=pointer]:
+              - /url: https://www.linkedin.com/top-content/productivity/
+          - listitem:
+            - link "Finance" [ref=e67] [cursor=pointer]:
+              - /url: https://www.linkedin.com/top-content/finance/
+          - listitem:
+            - link "Soft Skills & Emotional Intelligence" [ref=e68] [cursor=pointer]:
+              - /url: https://www.linkedin.com/top-content/soft-skills-emotional-intelligence/
+          - listitem:
+            - link "Project Management" [ref=e69] [cursor=pointer]:
+              - /url: https://www.linkedin.com/top-content/project-management/
+          - listitem:
+            - link "Education" [ref=e70] [cursor=pointer]:
+              - /url: https://www.linkedin.com/top-content/education/
+          - listitem:
+            - link "Technology" [ref=e71] [cursor=pointer]:
+              - /url: https://www.linkedin.com/top-content/technology/
+          - listitem:
+            - link "Leadership" [ref=e72] [cursor=pointer]:
+              - /url: https://www.linkedin.com/top-content/leadership/
+          - listitem:
+            - link "Ecommerce" [ref=e73] [cursor=pointer]:
+              - /url: https://www.linkedin.com/top-content/ecommerce/
+          - listitem:
+            - link "Show all top content" [ref=e74] [cursor=pointer]:
+              - /url: https://www.linkedin.com/top-content/
+              - text: Show all
+    - generic [ref=e75]:
+      - heading "Find the right job or internship for you" [level=2] [ref=e77]
+      - generic [ref=e79]:
+        - list [ref=e80]:
+          - listitem:
+            - link "Engineering" [ref=e81] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/engineering-jobs-playa-del-carmen-roo?trk=homepage-basic_suggested-search
+          - listitem:
+            - link "Business Development" [ref=e82] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/business-development-jobs-playa-del-carmen-roo?trk=homepage-basic_suggested-search
+          - listitem:
+            - link "Finance" [ref=e83] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/finance-jobs-playa-del-carmen-roo?trk=homepage-basic_suggested-search
+          - listitem:
+            - link "Administrative Assistant" [ref=e84] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/administrative-assistant-jobs-playa-del-carmen-roo?trk=homepage-basic_suggested-search
+          - listitem:
+            - link "Retail Associate" [ref=e85] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/retail-associate-jobs-playa-del-carmen-roo?trk=homepage-basic_suggested-search
+          - listitem:
+            - link "Customer Service" [ref=e86] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/customer-service-jobs-playa-del-carmen-roo?trk=homepage-basic_suggested-search
+          - listitem:
+            - link "Operations" [ref=e87] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/operations-jobs-playa-del-carmen-roo?trk=homepage-basic_suggested-search
+          - listitem:
+            - link "Information Technology" [ref=e88] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/information-technology-jobs-playa-del-carmen-roo?trk=homepage-basic_suggested-search
+          - listitem:
+            - link "Marketing" [ref=e89] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/marketing-jobs-playa-del-carmen-roo?trk=homepage-basic_suggested-search
+          - listitem:
+            - link "Human Resources" [ref=e90] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/human-resources-jobs-playa-del-carmen-roo?trk=homepage-basic_suggested-search
+        - button "Show more" [ref=e91] [cursor=pointer]: Show more
+    - generic [ref=e94]:
+      - heading "Post your job for millions of people to see" [level=2] [ref=e95]
+      - link "Post a job" [ref=e96] [cursor=pointer]:
+        - /url: https://www.linkedin.com/talent/post-a-job?trk=homepage-basic_talent-finder-cta
+    - generic [ref=e97]:
+      - generic [ref=e98]:
+        - heading "Discover the best software tools" [level=2] [ref=e99]
+        - paragraph [ref=e100]: Connect with buyers who have first-hand experience to find the best products for you.
+      - generic [ref=e101]:
+        - list:
+          - listitem:
+            - link "E-Commerce Platforms" [ref=e102] [cursor=pointer]:
+              - /url: https://www.linkedin.com/products/categories/e-commerce-platforms
+          - listitem:
+            - link "CRM Software" [ref=e103] [cursor=pointer]:
+              - /url: https://www.linkedin.com/products/categories/customer-relationship-management-software
+          - listitem:
+            - link "Human Resources Management Systems" [ref=e104] [cursor=pointer]:
+              - /url: https://www.linkedin.com/products/categories/human-resources-management-systems
+          - listitem:
+            - link "Recruiting Software" [ref=e105] [cursor=pointer]:
+              - /url: https://www.linkedin.com/products/categories/recruiting-software
+          - listitem:
+            - link "Sales Intelligence Software" [ref=e106] [cursor=pointer]:
+              - /url: https://www.linkedin.com/products/categories/sales-intelligence-software
+          - listitem:
+            - link "Project Management Software" [ref=e107] [cursor=pointer]:
+              - /url: https://www.linkedin.com/products/categories/project-management-software
+          - listitem:
+            - link "Help Desk Software" [ref=e108] [cursor=pointer]:
+              - /url: https://www.linkedin.com/products/categories/help-desk-software
+          - listitem:
+            - link "Social Networking Software" [ref=e109] [cursor=pointer]:
+              - /url: https://www.linkedin.com/products/categories/social-networking-software
+          - listitem:
+            - link "Desktop Publishing Software" [ref=e110] [cursor=pointer]:
+              - /url: https://www.linkedin.com/products/categories/desktop-publishing-software
+          - listitem:
+            - link "Show all softwares and platforms" [ref=e111] [cursor=pointer]:
+              - /url: https://www.linkedin.com/products/home
+              - text: Show all
+    - generic [ref=e112]:
+      - generic [ref=e113]:
+        - heading "Keep your mind sharp with games" [level=2] [ref=e114]
+        - paragraph [ref=e115]: Take a break and reconnect with your network through quick daily games.
+      - generic [ref=e116]:
+        - list:
+          - listitem:
+            - link "Patches" [ref=e117] [cursor=pointer]:
+              - /url: https://lnkd.in/patches
+          - listitem:
+            - link "Zip" [ref=e118] [cursor=pointer]:
+              - /url: https://lnkd.in/zip
+          - listitem:
+            - link "Mini Sudoku" [ref=e119] [cursor=pointer]:
+              - /url: https://lnkd.in/minisudoku
+          - listitem:
+            - link "Queens" [ref=e120] [cursor=pointer]:
+              - /url: https://lnkd.in/queens
+          - listitem:
+            - link "Tango" [ref=e121] [cursor=pointer]:
+              - /url: https://lnkd.in/tango
+          - listitem:
+            - link "Pinpoint" [ref=e122] [cursor=pointer]:
+              - /url: https://lnkd.in/pinpoint
+          - listitem:
+            - link "Crossclimb" [ref=e123] [cursor=pointer]:
+              - /url: https://lnkd.in/crossclimb
+    - generic [ref=e125]:
+      - list [ref=e127]:
+        - listitem [ref=e128]:
+          - generic [ref=e129]:
+            - heading "Let the right people know you’re open to work" [level=2] [ref=e130]
+            - paragraph [ref=e131]: With the Open To Work feature, you can privately tell recruiters or publicly share with the LinkedIn community that you are looking for new job opportunities.
+        - listitem [ref=e132]:
+          - generic [ref=e133]:
+            - heading "Conversations today could lead to opportunity tomorrow" [level=2] [ref=e134]
+            - paragraph [ref=e135]: Sending messages to people you know is a great way to strengthen relationships as you take the next step in your career.
+        - listitem [ref=e136]:
+          - generic [ref=e137]:
+            - heading [level=2] [ref=e138]: Stay up to date on your industry
+            - paragraph [ref=e139]: From live videos, to stories, to newsletters and more, LinkedIn is full of ways to stay up to date on the latest discussions in your industry.
+      - button "Next Slide" [ref=e141] [cursor=pointer]
+    - generic [ref=e144]:
+      - generic [ref=e146]:
+        - heading "Connect with people who can help" [level=2] [ref=e147]
+        - link "Find people you know" [ref=e150] [cursor=pointer]:
+          - /url: https://www.linkedin.com/pub/dir/+/+?trk=homepage-basic
+      - generic [ref=e152]:
+        - heading "Learn the skills you need to succeed" [level=2] [ref=e153]
+        - button "Choose a topic to learn about" [ref=e158] [cursor=pointer]:
+          - generic [ref=e159]: Choose a topic to learn about
+    - generic [ref=e163]:
+      - heading "Who is LinkedIn for?" [level=2] [ref=e164]
+      - paragraph [ref=e165]: Anyone looking to navigate their professional life.
+      - list [ref=e167]:
+        - listitem [ref=e168]:
+          - link "Find a coworker or classmate" [ref=e169] [cursor=pointer]:
+            - /url: https://www.linkedin.com/pub/dir/+/+?trk=homepage-basic_brand-discovery_intent-module-firstBtn
+        - listitem [ref=e170]:
+          - link "Find a new job" [ref=e171] [cursor=pointer]:
+            - /url: https://www.linkedin.com/jobs/jobs-in-playa-del-carmen-roo?trk=homepage-basic_brand-discovery_intent-module-secondBtn
+        - listitem [ref=e172]:
+          - link "Find a course or training" [ref=e173] [cursor=pointer]:
+            - /url: https://www.linkedin.com/learning/search?trk=homepage-basic_brand-discovery_intent-module-thirdBtn
+    - generic [ref=e175]:
+      - heading "Join your colleagues, classmates, and friends on LinkedIn" [level=2] [ref=e176]
+      - link "Get started" [ref=e177] [cursor=pointer]:
+        - /url: https://www.linkedin.com/signup?trk=homepage-basic_join-cta
+    - generic [ref=e180]:
+      - generic [ref=e181]:
+        - heading "General" [level=3] [ref=e182]
+        - list [ref=e183]:
+          - listitem [ref=e184]:
+            - link "Sign Up" [ref=e185] [cursor=pointer]:
+              - /url: https://www.linkedin.com/signup?trk=guest_homepage-basic_directory
+          - listitem [ref=e186]:
+            - link "Help Center" [ref=e187] [cursor=pointer]:
+              - /url: https://www.linkedin.com/help/linkedin?lang=en&trk=homepage-basic_directory_helpCenterUrl
+          - listitem [ref=e188]:
+            - link "About" [ref=e189] [cursor=pointer]:
+              - /url: https://about.linkedin.com/?trk=homepage-basic_directory_aboutUrl
+          - listitem [ref=e190]:
+            - link "Press" [ref=e191] [cursor=pointer]:
+              - /url: https://press.linkedin.com/?trk=homepage-basic_directory_pressMicrositeUrl
+          - listitem [ref=e192]:
+            - link "Blog" [ref=e193] [cursor=pointer]:
+              - /url: https://blog.linkedin.com/?trk=homepage-basic_directory_blogMicrositeUrl
+          - listitem [ref=e194]:
+            - link "Careers" [ref=e195] [cursor=pointer]:
+              - /url: https://www.linkedin.com/company/linkedin/jobs?trk=homepage-basic_directory_careersUrl
+          - listitem [ref=e196]:
+            - link "Developers" [ref=e197] [cursor=pointer]:
+              - /url: https://developer.linkedin.com/?trk=homepage-basic_directory_developerMicrositeUrl
+      - generic [ref=e198]:
+        - heading "Browse LinkedIn" [level=3] [ref=e199]
+        - list [ref=e200]:
+          - listitem [ref=e201]:
+            - link "Learning" [ref=e202] [cursor=pointer]:
+              - /url: https://www.linkedin.com/learning/?trk=homepage-basic_directory_learningHomeUrl
+          - listitem [ref=e203]:
+            - link "Jobs" [ref=e204] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs?trk=homepage-basic_directory_jobsHomeUrl
+          - listitem [ref=e205]:
+            - link "Games" [ref=e206] [cursor=pointer]:
+              - /url: https://www.linkedin.com/games?trk=homepage-basic_directory_gameHubUrl
+          - listitem [ref=e207]:
+            - link "Mobile" [ref=e208] [cursor=pointer]:
+              - /url: https://members.linkedin.com/apps?trk=homepage-basic_directory_mobileMicrositeUrl
+          - listitem [ref=e209]:
+            - link "Services" [ref=e210] [cursor=pointer]:
+              - /url: https://www.linkedin.com/services?trk=homepage-basic_directory_servicesHomeUrl
+          - listitem [ref=e211]:
+            - link "Products" [ref=e212] [cursor=pointer]:
+              - /url: https://www.linkedin.com/products?trk=homepage-basic_directory_productsHomeUrl
+          - listitem [ref=e213]:
+            - link "Top Companies" [ref=e214] [cursor=pointer]:
+              - /url: https://www.linkedin.com/hubs/top-companies/?trk=homepage-basic_directory_topCompaniesHubHomeUrl
+          - listitem [ref=e215]:
+            - link "Top Startups" [ref=e216] [cursor=pointer]:
+              - /url: https://www.linkedin.com/hubs/top-startups/?trk=homepage-basic_directory_topStartupsHubHomeUrl
+          - listitem [ref=e217]:
+            - link "Top Colleges" [ref=e218] [cursor=pointer]:
+              - /url: https://www.linkedin.com/hubs/top-colleges/?trk=homepage-basic_directory_topCollegesHubHomeUrl
+      - generic [ref=e219]:
+        - heading "Business Solutions" [level=3] [ref=e220]
+        - list [ref=e221]:
+          - listitem [ref=e222]:
+            - link "Talent" [ref=e223] [cursor=pointer]:
+              - /url: https://business.linkedin.com/talent-solutions?src=li-footer&utm_source=linkedin&utm_medium=footer&trk=homepage-basic_directory_talentSolutionsMicrositeUrl
+          - listitem [ref=e224]:
+            - link "Marketing" [ref=e225] [cursor=pointer]:
+              - /url: https://business.linkedin.com/marketing-solutions?src=li-footer&utm_source=linkedin&utm_medium=footer&trk=homepage-basic_directory_marketingSolutionsMicrositeUrl
+          - listitem [ref=e226]:
+            - link "Sales" [ref=e227] [cursor=pointer]:
+              - /url: https://business.linkedin.com/sales-solutions?src=li-footer&utm_source=linkedin&utm_medium=footer&trk=homepage-basic_directory_salesSolutionsMicrositeUrl
+          - listitem [ref=e228]:
+            - link "Learning" [ref=e229] [cursor=pointer]:
+              - /url: https://learning.linkedin.com/?src=li-footer&trk=homepage-basic_directory_learningMicrositeUrl
+      - generic [ref=e230]:
+        - heading "Directories" [level=3] [ref=e231]
+        - list [ref=e232]:
+          - listitem [ref=e233]:
+            - link "Members" [ref=e234] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/people?trk=homepage-basic_directory_peopleDirectoryUrl
+          - listitem [ref=e235]:
+            - link "Jobs" [ref=e236] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/jobs?trk=homepage-basic_directory_jobSearchDirectoryUrl
+          - listitem [ref=e237]:
+            - link "Companies" [ref=e238] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/companies?trk=homepage-basic_directory_companyDirectoryUrl
+          - listitem [ref=e239]:
+            - link "Featured" [ref=e240] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/featured?trk=homepage-basic_directory_featuredDirectoryUrl
+          - listitem [ref=e241]:
+            - link "Learning" [ref=e242] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/learning?trk=homepage-basic_directory_learningDirectoryUrl
+          - listitem [ref=e243]:
+            - link "Posts" [ref=e244] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/posts?trk=homepage-basic_directory_postsDirectoryUrl
+          - listitem [ref=e245]:
+            - link "Articles" [ref=e246] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/articles?trk=homepage-basic_directory_articlesDirectoryUrl
+          - listitem [ref=e247]:
+            - link "Schools" [ref=e248] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/schools?trk=homepage-basic_directory_schoolsDirectoryUrl
+          - listitem [ref=e249]:
+            - link "News" [ref=e250] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/news?trk=homepage-basic_directory_newsDirectoryUrl
+          - listitem [ref=e251]:
+            - link "News Letters" [ref=e252] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/newsletters?trk=homepage-basic_directory_newslettersDirectoryUrl
+          - listitem [ref=e253]:
+            - link "Services" [ref=e254] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/services?trk=homepage-basic_directory_servicesDirectoryUrl
+          - listitem [ref=e255]:
+            - link "Products" [ref=e256] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/products?trk=homepage-basic_directory_productsDirectoryUrl
+          - listitem [ref=e257]:
+            - link "Advice" [ref=e258] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/advice?trk=homepage-basic_directory_adviceDirectoryUrl
+          - listitem [ref=e259]:
+            - link "People Search" [ref=e260] [cursor=pointer]:
+              - /url: https://www.linkedin.com/directory/people-search?trk=homepage-basic_directory_peopleSearchDirectoryUrl
+  - contentinfo [ref=e261]:
+    - list [ref=e262]:
+      - listitem [ref=e263]:
+        - generic [ref=e264]: LinkedIn
+        - generic [ref=e266]: © 2026
+      - listitem [ref=e267]:
+        - link "About" [ref=e268] [cursor=pointer]:
+          - /url: https://about.linkedin.com?trk=homepage-basic_footer-about
+      - listitem [ref=e269]:
+        - link "Accessibility" [ref=e270] [cursor=pointer]:
+          - /url: https://www.linkedin.com/accessibility?trk=homepage-basic_footer-accessibility
+      - listitem [ref=e271]:
+        - link "User Agreement" [ref=e272] [cursor=pointer]:
+          - /url: https://www.linkedin.com/legal/user-agreement?trk=homepage-basic_footer-user-agreement
+      - listitem [ref=e273]:
+        - link "Privacy Policy" [ref=e274] [cursor=pointer]:
+          - /url: https://www.linkedin.com/legal/privacy-policy?trk=homepage-basic_footer-privacy-policy
+      - listitem [ref=e275]:
+        - link "Cookie Policy" [ref=e276] [cursor=pointer]:
+          - /url: https://www.linkedin.com/legal/cookie-policy?trk=homepage-basic_footer-cookie-policy
+      - listitem [ref=e277]:
+        - link "Copyright Policy" [ref=e278] [cursor=pointer]:
+          - /url: https://www.linkedin.com/legal/copyright-policy?trk=homepage-basic_footer-copyright-policy
+      - listitem [ref=e279]:
+        - link "Brand Policy" [ref=e280] [cursor=pointer]:
+          - /url: https://brand.linkedin.com/policies?trk=homepage-basic_footer-brand-policy
+      - listitem [ref=e281]:
+        - link "Guest Controls" [ref=e282] [cursor=pointer]:
+          - /url: https://www.linkedin.com/psettings/guest-controls?trk=homepage-basic_footer-guest-controls
+      - listitem [ref=e283]:
+        - link "Community Guidelines" [ref=e284] [cursor=pointer]:
+          - /url: https://www.linkedin.com/legal/professional-community-policies?trk=homepage-basic_footer-community-guide
+      - listitem [ref=e285]:
+        - button "Language" [ref=e287]: Language

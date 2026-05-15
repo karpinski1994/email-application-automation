@@ -1,8 +1,8 @@
-GABRIEL MENACHO
+JON DOE
 LEAD FULL STACK SOFTWARE ENGINEER
-Location: Bolivia Phone: +591 60574733 Email: gabriel.menacho.silva@gmail.com Education: Bachelor's in
-Computer Systems Engineering & Law Languages: Spanish (Native) , English (C1)
-LinkedIn: gmenacho
+Location: USA Phone: +1 5551234567 Email: jon.doe@gmail.com Education: Bachelor's in
+Computer Systems Engineering & Law Languages: English (Native) , Spanish (C1)
+LinkedIn: jdoe
 About
 Lead Full-Stack Software Engineer with 12+ years building and scaling production-grade web platforms for global
 companies including PayPal, HighJump, and Xtime. I specialize in high-performance React + TypeScript frontends tightly
