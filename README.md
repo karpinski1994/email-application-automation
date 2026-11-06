@@ -7,39 +7,22 @@ AI-driven pipeline that automates the entire job application process. It searche
 ## 📊 Workflow Diagram
 
 ```mermaid
-graph TD
-    subgraph Step1["Step 1: Parse CV"]
-        P1[Extract CV text from PDF]
-    end
-    
-    subgraph Step2["Step 2: Scrape Jobs"]
-        P2[Fetch jobs from LinkedIn via Apify]
-    end
-    
-    subgraph Step3["Step 3: Filter Jobs"]
-        P3[AI-based job matching with embeddings + LLM]
-    end
-    
-    subgraph Step4["Step 4: Find Emails"]
-        P4[Discover hiring manager emails via AnyMailFinder]
-    end
-    
-    subgraph Step5["Step 5: Personalize CVs"]
-        P5[Generate tailored CV for each job]
-    end
-    
-    subgraph Step6["Step 6: Create Drafts"]
-        P6[Gmail drafts with personalized CV attached]
-    end
-    
-    P1 --> P2 --> P3 --> P4 --> P5 --> P6
-    
-    style Step1 fill:#1e3a5f,stroke:#fff,color:#fff
-    style Step2 fill:#3d6a99,stroke:#fff,color:#fff
-    style Step3 fill:#5a9cbf,stroke:#fff,color:#fff
-    style Step4 fill:#7bbedf,stroke:#fff,color:#333
-    style Step5 fill:#a0dcf0,stroke:#fff,color:#333
-    style Step6 fill:#c8edf7,stroke:#fff,color:#333
+flowchart TD
+    S1["Step 1: Parse CV<br>Extract candidate text and structure from PDF/TXT"]
+    S2["Step 2: Scrape Jobs<br>Fetch target job listings from LinkedIn via Apify"]
+    S3["Step 3: Filter Jobs<br>Two-stage match: nomic embeddings + LLM relevance scoring"]
+    S4["Step 4: Find Emails<br>Discover hiring manager emails via AnyMailFinder and DDG"]
+    S5["Step 5: Personalize CVs<br>Generate tailored summary and reordered skills per job"]
+    S6["Step 6: Create Drafts<br>Generate Gmail drafts with tailored message and PDF attached"]
+
+    S1 --> S2 --> S3 --> S4 --> S5 --> S6
+
+    style S1 fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc
+    style S2 fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc
+    style S3 fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc
+    style S4 fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc
+    style S5 fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc
+    style S6 fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc
 ```
 
 > **Why Step 1 matters:** Your parsed CV text is used in **Step 3 (Filtering)** to compare against job descriptions using AI embeddings and LLM scoring, AND in **Step 5 (Personalize CV)** to generate tailored summaries and reorder skills for each job. Without parsing your CV first, none of the AI-powered steps work!
@@ -676,6 +659,38 @@ WeasyPrint requires GTK runtime, which is not installed by default on Windows. C
 1. Install [MSYS2](https://www.msys2.org/)
 2. In MSYS2 terminal: `pacman -S mingw-w64-x86_64-weasyprint`
 3. Use that Python environment instead
+
+---
+
+## 🤖 Agent Setup Instructions (Prompt for AI Coding Assistants)
+
+> **For AI Agents (Antigravity, OpenCode, Cursor, Windsurf, Claude Code):**
+> When tasked with setting up, debugging, or verifying this project autonomously, follow this exact playbook:
+
+```bash
+# 1. Environment & Dependencies
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+
+# 2. Configuration Setup (idempotent, never overwrite existing user files)
+cp -n config.example.yaml config.yaml 2>/dev/null || true
+cp -n .env.example .env 2>/dev/null || true
+
+# 3. Model Verification (if Ollama is installed locally)
+# Required models: qwen2.5:7b (main), llama3.2:3b (scoring), nomic-embed-text (embeddings)
+ollama list 2>/dev/null || echo "Ollama not running or not in PATH"
+
+# 4. Dry-Run Verification (proves imports, configuration, and pipeline integrity without spending API credits)
+PYTHONPATH=src python3 -m app --dry-run
+```
+
+### Key Invariants for Autonomous Agents
+- **Module Resolution:** Always set `PYTHONPATH=src` when running CLI commands (e.g. `PYTHONPATH=src python3 -m app`).
+- **Virtual Environment:** Always execute via `.venv/bin/python` or after `source .venv/bin/activate`.
+- **API Safety:** Use `--dry-run` to test pipeline logic without executing external API calls (Apify, AnyMailFinder, Gmail).
+- **Resume from Cache:** Use `--cached` to continue from the latest saved artifact in `data/` without re-running completed stages.
+- **Single-Step Execution:** To test a specific phase in isolation, use `--step <1-6>`.
 
 ---
 
